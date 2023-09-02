@@ -8,6 +8,10 @@ class SendDM(commands.Cog):
 
     @app_commands.command(name="send_dm", description="Send a DM to a user")
     @app_commands.checks.has_permissions(moderate_members=True)
+    @app_commands.describe(
+        user="The user to send the DM to",
+        message="The message to send to the user"
+    )
     async def send_dm(self, interaction: discord.Interaction, user: discord.Member, message: str):
         # Create the embed for the user
         user_embed = Embed(description=message, color=discord.Color.orange())

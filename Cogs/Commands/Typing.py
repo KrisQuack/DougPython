@@ -9,6 +9,10 @@ class Typing(commands.Cog):
 
     @app_commands.command(name="typing", description="Make the bot type in a channel for a given time")
     @app_commands.checks.has_permissions(moderate_members=True)
+    @app_commands.describe(
+        channel="The channel to type in",
+        seconds="The amount of seconds to type for"
+    )
     async def typing(self, interaction: discord.Interaction, channel: discord.TextChannel, seconds: int):
         await interaction.response.defer(ephemeral=True)
         if(seconds > 300):

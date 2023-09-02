@@ -6,7 +6,7 @@ class ReactionFilter(commands.Cog):
         self.client = client
         self.reaction_filter.start()  # Start the background task
 
-    @tasks.loop(minutes=1)  # Run this loop every 5 minutes
+    @tasks.loop(minutes=10)  # Run this loop every 5 minutes
     async def reaction_filter(self):
         # Assuming you have a list of whitelisted emote names
         emote_whitelist = self.client.settings.reaction_filter_emotes

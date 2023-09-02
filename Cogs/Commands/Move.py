@@ -10,6 +10,10 @@ class Move(commands.Cog):
 
     @app_commands.command(name="move", description="Move a message to another channel")
     @app_commands.checks.has_permissions(moderate_members=True)
+    @app_commands.describe(
+        message_id="The ID of the message to move",
+        channel="The channel to move the message to"
+    )
     async def move(self, interaction: discord.Interaction, message_id: str, channel: discord.TextChannel):
         await interaction.response.defer()
         # Identify if it's a thread

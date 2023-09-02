@@ -8,6 +8,10 @@ class SetSlowmode(commands.Cog):
 
     @app_commands.command(name="set_slowmode", description="Set the slow mode for a channel")
     @app_commands.checks.has_permissions(moderate_members=True)
+    @app_commands.describe(
+        channel="The channel to set the slow mode in",
+        seconds="The amount of seconds to set the slow mode to"
+    )
     async def set_slowmode(self, interaction: discord.Interaction, channel: discord.TextChannel = None, seconds: int = 5):
         if seconds > 21600:
             await interaction.response.send_message('The maximum slow mode time is 21600 seconds.', ephemeral=True)
