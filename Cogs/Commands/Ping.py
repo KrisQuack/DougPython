@@ -1,7 +1,9 @@
-import discord
-from discord.ext import commands
-from discord import app_commands
 import time
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+
 
 class Ping(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -29,6 +31,7 @@ class Ping(commands.Cog):
 
         # Send the embed
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(Ping(self))

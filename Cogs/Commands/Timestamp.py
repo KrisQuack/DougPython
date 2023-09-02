@@ -1,10 +1,11 @@
+from datetime import datetime
 from typing import List
 
 import discord
-from discord.ext import commands
-from discord import app_commands
-from datetime import datetime
 import pytz
+from discord import app_commands
+from discord.ext import commands
+
 
 class Timestamp(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -32,7 +33,8 @@ class Timestamp(commands.Cog):
         try:
             parsed_time = datetime.strptime(date_string, '%d/%b/%Y %H:%M')
         except ValueError:
-            await interaction.response.send_message("Invalid date or time format. Please use `04/Jul/2000` for date and `HH:MM` for time.", ephemeral=True)
+            await interaction.response.send_message(
+                "Invalid date or time format. Please use `04/Jul/2000` for date and `HH:MM` for time.", ephemeral=True)
             return
 
         # Apply the time zone
@@ -44,13 +46,16 @@ class Timestamp(commands.Cog):
 
         # Create Discord embed
         embed = discord.Embed(title="Time Stamp", color=discord.Color.blue())
-        embed.add_field(name="Relative Time", value=f"`<t:{parsed_unix_time}:R>` : <t:{parsed_unix_time}:R>", inline=False)
-        embed.add_field(name="Absolute Time", value=f"`<t:{parsed_unix_time}:F>` : <t:{parsed_unix_time}:F>", inline=False)
+        embed.add_field(name="Relative Time", value=f"`<t:{parsed_unix_time}:R>` : <t:{parsed_unix_time}:R>",
+                        inline=False)
+        embed.add_field(name="Absolute Time", value=f"`<t:{parsed_unix_time}:F>` : <t:{parsed_unix_time}:F>",
+                        inline=False)
         embed.add_field(name="Short Date", value=f"`<t:{parsed_unix_time}:f>` : <t:{parsed_unix_time}:f>", inline=False)
         embed.add_field(name="Long Time", value=f"`<t:{parsed_unix_time}:T>` : <t:{parsed_unix_time}:T>", inline=False)
         embed.add_field(name="Short Time", value=f"`<t:{parsed_unix_time}:t>` : <t:{parsed_unix_time}:t>", inline=False)
 
-        await interaction.response.send_message(content=f"<t:{parsed_unix_time}:t> <t:{parsed_unix_time}:R>", embed=embed, ephemeral=True)
+        await interaction.response.send_message(content=f"<t:{parsed_unix_time}:t> <t:{parsed_unix_time}:R>",
+                                                embed=embed, ephemeral=True)
 
     @timestamp.autocomplete('timezone')
     async def timezones_autocomplete(
@@ -65,13 +70,16 @@ class Timestamp(commands.Cog):
             app_commands.Choice(name=timezone, value=timezone)
             for timezone in timezones if current.lower() in timezone.lower()
         ]
+
     @timestamp.autocomplete('date')
     async def timezones_autocomplete(
             self,
             interaction: discord.Interaction,
             current: str,
     ) -> List[app_commands.Choice[str]]:
-        return [app_commands.Choice(name=datetime.now().strftime('%d/%b/%Y'), value=datetime.now().strftime('%d/%b/%Y'))]
+        return [
+            app_commands.Choice(name=datetime.now().strftime('%d/%b/%Y'), value=datetime.now().strftime('%d/%b/%Y'))]
+
     @timestamp.autocomplete('time')
     async def timezones_autocomplete(
             self,
@@ -79,5 +87,7 @@ class Timestamp(commands.Cog):
             current: str,
     ) -> List[app_commands.Choice[str]]:
         return [app_commands.Choice(name=datetime.now().strftime('%H:%M'), value=datetime.now().strftime('%H:%M'))]
+
+
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(Timestamp(self))

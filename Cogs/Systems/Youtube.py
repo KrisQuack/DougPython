@@ -1,8 +1,10 @@
-import discord
-from discord.ext import commands, tasks
-import aiohttp
 import xml.etree.ElementTree as ET
 from datetime import datetime
+
+import aiohttp
+import discord
+from discord.ext import commands, tasks
+
 
 class CheckYoutube(commands.Cog):
     def __init__(self, client):
@@ -14,7 +16,8 @@ class CheckYoutube(commands.Cog):
     async def monitor(self):
         for youtube_config in self.client.settings.youtube_settings:
             try:
-                async with self.session.get(f'https://www.youtube.com/feeds/videos.xml?channel_id={youtube_config["id"]}') as r:
+                async with self.session.get(
+                        f'https://www.youtube.com/feeds/videos.xml?channel_id={youtube_config["id"]}') as r:
                     if r.status == 200:
                         text = await r.text()
                         root = ET.fromstring(text)
@@ -52,11 +55,13 @@ class CheckYoutube(commands.Cog):
                         youtube_config['last_video_id'] = video_id
 
             except Exception as e:
-                print(f"[General/Warning] {datetime.utcnow().strftime('%H:%M:%S')} YoutubeChannel {youtube_config['id']} {e}")
+                print(
+                    f"[General/Warning] {datetime.utcnow().strftime('%H:%M:%S')} YoutubeChannel {youtube_config['id']} {e}")
 
     @monitor.before_loop
     async def before_monitor(self):
         await self.client.wait_until_ready()
+
 
 async def setup(client):
     await client.add_cog(CheckYoutube(client))

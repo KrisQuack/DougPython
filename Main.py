@@ -1,7 +1,9 @@
+import os
+
 import discord
 from discord.ext import commands
+
 from Data.Settings import Settings
-import os
 
 
 class Client(commands.Bot):

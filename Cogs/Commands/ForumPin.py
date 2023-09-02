@@ -1,6 +1,7 @@
 import discord
-from discord.ext import commands
 from discord import app_commands
+from discord.ext import commands
+
 
 class PinUnpin(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -46,7 +47,9 @@ class PinUnpin(commands.Cog):
                 await interaction.followup.send("Message unpinned", ephemeral=True)
                 return
 
-        await interaction.followup.send("This command can only be used in threads you own and not on the first message", ephemeral=True)
+        await interaction.followup.send("This command can only be used in threads you own and not on the first message",
+                                        ephemeral=True)
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(PinUnpin(self))

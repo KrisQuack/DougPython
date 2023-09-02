@@ -1,6 +1,7 @@
 import discord
-from discord.ext import commands
 from discord import app_commands, Embed
+from discord.ext import commands
+
 
 class SendDM(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -31,6 +32,7 @@ class SendDM(commands.Cog):
         # Assuming you have a way to get the DM receipt channel (replace with your method)
         await self.client.settings.dm_receipt_channel.send(embed=mod_embed)
         await interaction.response.send_message("DM Sent", ephemeral=True)
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(SendDM(self))

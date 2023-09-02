@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+
 class ThreadWelcomeCog(commands.Cog):
     def __init__(self, client):
         self.client = client
@@ -25,6 +26,7 @@ class ThreadWelcomeCog(commands.Cog):
         embed.set_author(name=thread.name, icon_url=thread.guild.icon.url)
         # Send the embed and pin it
         await thread.send(embed=embed)
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(ThreadWelcomeCog(self))

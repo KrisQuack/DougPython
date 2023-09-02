@@ -1,6 +1,7 @@
 import discord
-from discord.ext import commands
 from discord import Embed, Color
+from discord.ext import commands
+
 
 class DMRelay(commands.Cog):
     def __init__(self, client):
@@ -18,9 +19,11 @@ class DMRelay(commands.Cog):
             # If there are attachments, add them to the embed
             attachment_embeds = []
             for attachment in message.attachments:
-                attach_embed = Embed(title=attachment.filename, url=attachment.url, color=Color.blue())  # Using blue as a placeholder for color
+                attach_embed = Embed(title=attachment.filename, url=attachment.url,
+                                     color=Color.blue())  # Using blue as a placeholder for color
                 attach_embed.set_image(url=attachment.url)
-                attach_embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.avatar.url)
+                attach_embed.set_author(name=f"{message.author.name} ({message.author.id})",
+                                        icon_url=message.author.avatar.url)
                 attach_embed.timestamp = message.created_at
                 attachment_embeds.append(attach_embed)
 
@@ -29,6 +32,7 @@ class DMRelay(commands.Cog):
             for attach_embed in attachment_embeds:
                 await self.client.settings.dm_receipt_channel.send(embed=attach_embed)
             await message.channel.send("Message sent to the mods!")
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(DMRelay(self))

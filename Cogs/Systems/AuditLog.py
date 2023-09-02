@@ -1,6 +1,7 @@
 import discord
-from discord.ext import commands
 from discord import Embed, Color
+from discord.ext import commands
+
 
 class AuditLog(commands.Cog):
     def __init__(self, client):
@@ -42,6 +43,7 @@ class AuditLog(commands.Cog):
         embed.add_field(name="After", value=after.content, inline=False)
         embed.set_author(name=f"{before.author.name} ({before.author.id})", icon_url=before.author.avatar.url)
         await self.client.settings.log_channel.send(embed=embed)
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(AuditLog(self))
