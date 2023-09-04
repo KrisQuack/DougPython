@@ -29,6 +29,8 @@ class AuditLog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
+        if isinstance(message.channel, discord.DMChannel):
+            return
         embed = Embed(title=f"Message Deleted in {message.channel.name}", color=Color.red())
         embed.add_field(name="Content", value=message.content, inline=False)
         embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.avatar.url)
@@ -36,6 +38,8 @@ class AuditLog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
+        if isinstance(after.channel, discord.DMChannel):
+            return
         if before.content == after.content:
             return
         embed = Embed(title=f"Message Edited in {before.channel.name}", color=Color.orange())

@@ -9,16 +9,15 @@ class Ping(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
 
-    @app_commands.command(name="ping")
+    @app_commands.command(name="ping", description="Check the bot's latency")
     async def ping(self, interaction: discord.Interaction):
         # WebSocket latency
         ws_latency = round(self.client.latency * 1000)
 
         # Measure HTTP latency by timing how long it takes to send a message
         start_time = time.time()
-        msg = await interaction.channel.send("Calculating HTTP latency...")
+        await interaction.response.send_message("Latency Check", ephemeral=True)
         end_time = time.time()
-        await msg.delete()
 
         http_latency = round((end_time - start_time) * 1000)  # Convert to milliseconds
 
@@ -30,7 +29,7 @@ class Ping(commands.Cog):
         )
 
         # Send the embed
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.edit_original_response(content=None, embed=embed)
 
 
 async def setup(self: commands.Bot) -> None:
