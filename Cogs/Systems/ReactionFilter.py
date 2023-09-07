@@ -11,6 +11,9 @@ class ReactionFilter(commands.Cog):
         # Assuming you have a list of whitelisted emote names
         emote_whitelist = self.client.settings.reaction_filter_emotes
 
+        # Get the mod role from settings
+        mod_role = self.client.settings.mod_role
+
         for channel in self.client.settings.reaction_filter_channels:
             if channel is None:
                 continue
@@ -18,6 +21,11 @@ class ReactionFilter(commands.Cog):
             messages = [msg async for msg in channel.history(limit=20)]
             for message in messages:
                 for reaction in message.reactions:
+                    # Check if any user in the reaction has the mod role
+                    users = await reaction.users().flatten()
+                    if any(mod_role in user.roles for user in users):
+                        continue  # Skip this reaction if a user with the mod role reacted
+
                     if str(reaction.emoji) not in emote_whitelist:
                         await message.clear_reaction(reaction.emoji)
 

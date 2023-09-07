@@ -45,7 +45,7 @@ class CheckYoutube(commands.Cog):
                         # Create the embed
                         embed = discord.Embed(title=video_title, url=video_url)
                         embed.set_author(name=channel_name, url=channel_url)
-                        embed.set_thumbnail(url=video_thumbnail)
+                        embed.set_image(url=video_thumbnail)
 
                         post_channel = youtube_config["post_channel"]
                         mention_role = youtube_config["mention_role"].mention if youtube_config["mention_role"] else ""

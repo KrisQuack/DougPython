@@ -46,13 +46,16 @@ class Timestamp(commands.Cog):
 
         # Create Discord embed
         embed = discord.Embed(title="Time Stamp", color=discord.Color.blue())
-        embed.add_field(name="Relative Time", value=f"`<t:{parsed_unix_time}:R>` : <t:{parsed_unix_time}:R>", inline=False)
-        embed.add_field(name="Absolute Time", value=f"`<t:{parsed_unix_time}:F>` : <t:{parsed_unix_time}:F>", inline=False)
+        embed.add_field(name="Relative Time", value=f"`<t:{parsed_unix_time}:R>` : <t:{parsed_unix_time}:R>",
+                        inline=False)
+        embed.add_field(name="Absolute Time", value=f"`<t:{parsed_unix_time}:F>` : <t:{parsed_unix_time}:F>",
+                        inline=False)
         embed.add_field(name="Short Date", value=f"`<t:{parsed_unix_time}:f>` : <t:{parsed_unix_time}:f>", inline=False)
         embed.add_field(name="Long Time", value=f"`<t:{parsed_unix_time}:T>` : <t:{parsed_unix_time}:T>", inline=False)
         embed.add_field(name="Short Time", value=f"`<t:{parsed_unix_time}:t>` : <t:{parsed_unix_time}:t>", inline=False)
 
-        await interaction.response.send_message(content=f"<t:{parsed_unix_time}:t> <t:{parsed_unix_time}:R>", embed=embed, ephemeral=True)
+        await interaction.response.send_message(content=f"<t:{parsed_unix_time}:t> <t:{parsed_unix_time}:R>",
+                                                embed=embed, ephemeral=True)
 
     @timestamp.autocomplete('timezone')
     async def timezones_autocomplete(
