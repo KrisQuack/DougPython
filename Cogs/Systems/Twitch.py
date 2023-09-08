@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from discord import Embed, Color
@@ -9,12 +10,11 @@ from twitchAPI.oauth import refresh_access_token
 from twitchAPI.types import AuthScope, ChatEvent
 from discord.ext import commands
 
-
 class TwitchBot(commands.Cog):
-    def __init__(self, discord_client):
-        self.discord_client = discord_client
+    def __init__(self, settings):
+        self.settings = settings
         self.BOT_TARGET_SCOPES = [AuthScope.WHISPERS_EDIT, AuthScope.WHISPERS_READ, AuthScope.USER_MANAGE_WHISPERS,
-                                  AuthScope.CHAT_READ, AuthScope.CHAT_EDIT, AuthScope.CHANNEL_MANAGE_REDEMPTIONS]
+                                  AuthScope.CHAT_READ, AuthScope.CHAT_EDIT, AuthScope.CHANNEL_READ_REDEMPTIONS, AuthScope.CHANNEL_READ_PREDICTIONS]
         self.twitch_bot = None
         self.channel_user = None
         self.bot_user = None
@@ -22,10 +22,9 @@ class TwitchBot(commands.Cog):
 
     async def on_minecraft_redemption(self, data: dict):
         user_id = data['event']['user_id']
-        message = "Thanks for redeeming Minecraft access, Please join the discord and complete this form https://forms.gle/oouvNweqqBFZ8DtD9"
-        # await self.chat.send_message(self.channel_user.display_name, message)
-        # await self.twitch_bot.send_whisper(self.bot_user.id, user_id, message)
-        print(data)
+        user_name = data['event']['user_name']
+        message = f"@{user_name} Thanks for redeeming Minecraft access, Please join the discord and complete this form https://forms.gle/oouvNweqqBFZ8DtD9"
+        await self.chat.send_message(self.channel_user.display_name, message)
 
     async def on_prediction_begin(self, data: dict):
         # Extract prediction data
@@ -127,45 +126,47 @@ class TwitchBot(commands.Cog):
             print(f"{field.name}\n{field.value}\n{'-' * 40}")
 
     async def on_chat_ready(self, data: EventData):
-        print('Chat ready')
+        print('Chat is ready for work, joining channels')
+        await data.chat.join_room(self.settings.twitch_channel_name)
 
     async def on_chat_joined(self, data: EventData):
         print(f"User {data.user_name} joined the chat {data.room_name}")
 
-    async def on_chat_message(msg: ChatMessage):
-        print(f'in {msg.room.name}, {msg.user.name} said: {msg.text}')
+    async def on_chat_message(self, msg: ChatMessage):
+        if msg.text == "wah, you up?" and msg.user.mod:
+            await msg.reply("Let me sleep")
 
     async def run_twitch_bot(self):
         # Set up the Twitch instance for the bot
-        self.twitch_bot = await Twitch(self.discord_client.settings.twitch_client_id,
-                                       self.discord_client.settings.twitch_client_secret)
-        self.bot_user = await first(self.twitch_bot.get_users(logins=[self.discord_client.settings.twitch_bot_name]))
+        self.twitch_bot = await Twitch(self.settings.twitch_client_id,
+                                       self.settings.twitch_client_secret)
+        self.bot_user = await first(self.twitch_bot.get_users(logins=[self.settings.twitch_bot_name]))
         self.channel_user = await first(
-            self.twitch_bot.get_users(logins=self.discord_client.settings.twitch_channel_name))
-        bot_tokens = await refresh_access_token(self.discord_client.settings.twitch_bot_refresh_token,
-                                                self.discord_client.settings.twitch_client_id,
-                                                self.discord_client.settings.twitch_client_secret)
+            self.twitch_bot.get_users(logins=self.settings.twitch_channel_name))
+        bot_tokens = await refresh_access_token(self.settings.twitch_bot_refresh_token,
+                                                self.settings.twitch_client_id,
+                                                self.settings.twitch_client_secret)
         await self.twitch_bot.set_user_authentication(bot_tokens[0], self.BOT_TARGET_SCOPES,
                                                       refresh_token=bot_tokens[1])
         print(f'Twitch Bot ID: {self.bot_user.id}')
         # Set up the eventsub
-        event_sub = EventSub(self.discord_client.settings.twitch_eventsub_url,
-                             self.discord_client.settings.twitch_client_id, 8080, self.twitch_bot)
+        event_sub = EventSub(self.settings.twitch_eventsub_url,
+                             self.settings.twitch_client_id, 8080, self.twitch_bot)
         await event_sub.unsubscribe_all()
         event_sub.start()
         await event_sub.listen_channel_points_custom_reward_redemption_add(self.channel_user.id,
                                                                            self.on_minecraft_redemption,
                                                                            'a5b9d1c7-44f9-4964-b0f7-42c39cb04f98')
-        # await event_sub.listen_channel_prediction_begin(self.channel_user.id, self.on_prediction_begin)
-        # await event_sub.listen_channel_prediction_lock(self.channel_user.id, self.on_prediction_lock)
-        # await event_sub.listen_channel_prediction_end(self.channel_user.id, self.on_prediction_end)
+        await event_sub.listen_channel_prediction_begin(self.channel_user.id, self.on_prediction_begin)
+        await event_sub.listen_channel_prediction_lock(self.channel_user.id, self.on_prediction_lock)
+        await event_sub.listen_channel_prediction_end(self.channel_user.id, self.on_prediction_end)
         print('EventSub listening')
         # Set up the chat
-        self.chat = Chat(self.twitch_bot, initial_channel=[self.channel_user.display_name])
+        self.chat = await Chat(self.twitch_bot)
         self.chat.register_event(ChatEvent.READY, self.on_chat_ready)
         self.chat.register_event(ChatEvent.JOINED, self.on_chat_joined)
         self.chat.register_event(ChatEvent.MESSAGE, self.on_chat_message)
-        # self.chat.start()
+        self.chat.start()
         print('Chat listening')
 
     @commands.Cog.listener()
@@ -173,4 +174,4 @@ class TwitchBot(commands.Cog):
         await self.run_twitch_bot()
 
 async def setup(bot):
-    await bot.add_cog(TwitchBot(bot))
+    await bot.add_cog(TwitchBot(bot.settings))
