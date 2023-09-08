@@ -9,6 +9,7 @@ class SendDM(commands.Cog):
 
     @app_commands.command(name="send_dm", description="Send a DM to a user")
     @app_commands.checks.has_permissions(moderate_members=True)
+    @app_commands.guild_only()
     @app_commands.describe(
         user="The user to send the DM to",
         message="The message to send to the user"

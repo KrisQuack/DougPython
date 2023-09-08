@@ -9,6 +9,7 @@ class SetSlowmode(commands.Cog):
 
     @app_commands.command(name="set_slowmode", description="Set the slow mode for a channel")
     @app_commands.checks.has_permissions(moderate_members=True)
+    @app_commands.guild_only()
     @app_commands.describe(
         channel="The channel to set the slow mode in",
         seconds="The amount of seconds to set the slow mode to"

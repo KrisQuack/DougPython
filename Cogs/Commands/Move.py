@@ -12,6 +12,7 @@ class Move(commands.Cog):
 
     @app_commands.command(name="move", description="Move a message to another channel")
     @app_commands.checks.has_permissions(moderate_members=True)
+    @app_commands.guild_only()
     @app_commands.describe(
         message_id="The ID of the message to move",
         channel="The channel to move the message to"

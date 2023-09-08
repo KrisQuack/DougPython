@@ -10,10 +10,12 @@ class PinUnpin(commands.Cog):
             name='Forum: Pin',
             callback=self.pin_message,
         )
+        self.pin_message.guild_only = True
         self.unpin_message = app_commands.ContextMenu(
             name='Forum: UnPin',
             callback=self.unpin_message,
         )
+        self.unpin_message.guild_only = True
         self.client.tree.add_command(self.pin_message)
         self.client.tree.add_command(self.unpin_message)
 

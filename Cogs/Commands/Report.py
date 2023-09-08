@@ -10,10 +10,12 @@ class Report(commands.Cog):
             name='Report User',
             callback=self.report_user,
         )
+        self.report_user.guild_only = True
         self.report_message = app_commands.ContextMenu(
             name='Report Message',
             callback=self.report_message,
         )
+        self.report_message.guild_only = True
         self.client.tree.add_command(self.report_user)
         self.client.tree.add_command(self.report_message)
 
