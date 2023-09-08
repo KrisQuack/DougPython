@@ -2,8 +2,7 @@ import os
 import discord
 from discord import Embed, Color
 from discord.ext import commands
-from Data.Settings import Settings
-from Cogs.Systems.Verification import VerifyButton
+from Cogs.Systems.Settings import Settings
 
 
 class Client(commands.Bot):
@@ -49,6 +48,5 @@ class Client(commands.Bot):
                 await self.load_extension(f'Cogs.Systems.{filename[:-3]}')
 
 
-tempSettings = Settings(None)
 client = Client()
-client.run(tempSettings.token)
+client.run(client.settings.token)

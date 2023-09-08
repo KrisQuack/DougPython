@@ -12,7 +12,7 @@ class CheckYoutube(commands.Cog):
         self.session = aiohttp.ClientSession()
         self.monitor.start()  # Start the background task
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(minutes=10)
     async def monitor(self):
         for youtube_config in self.client.settings.youtube_settings:
             try:

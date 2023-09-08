@@ -22,7 +22,7 @@ class ReactionFilter(commands.Cog):
             for message in messages:
                 for reaction in message.reactions:
                     # Check if any user in the reaction has the mod role
-                    users = await reaction.users().flatten()
+                    users = [usr async for usr in reaction.users()]
                     if any(mod_role in user.roles for user in users):
                         continue  # Skip this reaction if a user with the mod role reacted
 

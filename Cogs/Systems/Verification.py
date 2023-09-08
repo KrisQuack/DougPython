@@ -11,6 +11,8 @@ class Verification(commands.Cog):
         self.client = client
 
     @app_commands.command(name="verificationsetup")
+    @app_commands.guild_only()
+    @app_commands.checks.has_permissions(administrator=True)
     async def VerificationSetup(self, interaction: discord.Interaction):
         embed = discord.Embed(
             title="Verification",
