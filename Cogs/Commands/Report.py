@@ -40,11 +40,12 @@ class ReportModal(ui.Modal, title="Report"):
         embeds = []
         if self.message:
             embed = Embed(title="Message Reported")
+            embed.url = self.message.jump_url
             embed.add_field(name="User Info",
                             value=f"\nMention: {self.message.author.mention}\nUsername: {self.message.author.name}\nID: {self.message.author.id}",
                             inline=False)
             embed.add_field(name="Message Info",
-                            value=f"\nChannel: #{self.message.channel.name}\nMessage: {self.message.content}",
+                            value=f"\nChannel: {self.message.channel.mention}\nMessage: {self.message.content}",
                             inline=False)
             embed.add_field(name="Reason", value=self.reason,
                             inline=False)

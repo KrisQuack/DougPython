@@ -21,10 +21,10 @@ class Typing(commands.Cog):
         if (seconds > 300):
             await interaction.followup.send('You cannot make me type for more than 5 minutes!')
             return
-        await interaction.followup.send('Typing')
+        await interaction.followup.send('Typing', ephemeral=True)
         async with channel.typing():
             await asyncio.sleep(seconds)
-        await interaction.followup.send('Done typing')
+        await interaction.followup.send('Done typing', ephemeral=True)
 
 
 async def setup(self: commands.Bot) -> None:

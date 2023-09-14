@@ -1,11 +1,9 @@
 import os
 
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, ARRAY
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from discord.ext import commands
 from discord.ext import commands, tasks
-
+from sqlalchemy import create_engine, Column, Integer, String, ARRAY
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
@@ -109,6 +107,7 @@ class SettingsRefresher(commands.Cog):
     @refresh_settings.before_loop
     async def before_refresh_settings(self):
         await self.client.wait_until_ready()
+
 
 async def setup(client):
     await client.add_cog(SettingsRefresher(client))

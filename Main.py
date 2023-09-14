@@ -1,13 +1,16 @@
 import os
+
 import discord
 from discord import Embed, Color
 from discord.ext import commands
+
 from Cogs.Systems.Settings import Settings
 
 
 class Client(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('!'), intents=discord.Intents.all(), help_command=None)
+        super().__init__(command_prefix=commands.when_mentioned_or('!'), intents=discord.Intents.all(),
+                         help_command=None)
         # Define first run
         self.first_run = True
         self.settings = Settings(None)
@@ -15,6 +18,7 @@ class Client(commands.Bot):
     async def on_ready(self):
         if self.first_run:
             self.settings = Settings(self)
+            await self.register_cogs()
             synced = await self.tree.sync()
             print(f'Command tree synced: {len(synced)}')
             print(f'Logged on as {self.user}!')
@@ -37,7 +41,7 @@ class Client(commands.Bot):
         if interaction.command_failed:
             print(interaction.command_failed)
 
-    async def setup_hook(self):
+    async def register_cogs(self):
         # Automatically load cogs from the 'Cogs/Commands/' folder
         for filename in os.listdir('./Cogs/Commands'):
             if filename.endswith('.py'):
