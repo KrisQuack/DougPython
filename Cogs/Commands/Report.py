@@ -52,7 +52,7 @@ class ReportModal(ui.Modal, title="Report"):
             embed.add_field(name="Reason", value=self.reason,
                             inline=False)
             embed.set_author(name=f"{interaction.user.name} ({interaction.user.id})",
-                             icon_url=interaction.user.avatar.url)
+                             icon_url=interaction.user.display_avatar.url)
             embed.timestamp = interaction.created_at
             embeds.append(embed)
 
@@ -68,7 +68,7 @@ class ReportModal(ui.Modal, title="Report"):
                             inline=False)
             embed.add_field(name="Reason", value=self.reason, inline=False)
             embed.set_author(name=f"{interaction.user.name} ({interaction.user.id})",
-                             icon_url=interaction.user.avatar.url)
+                             icon_url=interaction.user.display_avatar.url)
             embed.timestamp = interaction.created_at
             embeds.append(embed)
         try:

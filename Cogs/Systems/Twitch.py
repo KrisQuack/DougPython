@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 
 from discord import Embed, Color
 from discord.ext import commands
@@ -104,11 +105,11 @@ class TwitchBot(commands.Cog):
 
 
     async def on_chat_ready(self, data: EventData):
-        print('Chat is ready for work, joining channels')
+        logging.info('Chat is ready for work, joining channels')
         await data.chat.join_room(self.twitch_channel_name)
 
     async def on_chat_joined(self, data: EventData): 
-        print(f"User {data.user_name} joined the chat {data.room_name}")
+        logging.info(f"User {data.user_name} joined the chat {data.room_name}")
 
     async def on_chat_message(self, msg: ChatMessage):
         if msg.text == "wah, you up?" and msg.user.mod:
@@ -127,7 +128,7 @@ class TwitchBot(commands.Cog):
                                                 self.twitch_client_secret)
         await self.twitch_bot.set_user_authentication(bot_tokens[0], self.BOT_TARGET_SCOPES,
                                                       refresh_token=bot_tokens[1])
-        print(f'Twitch Bot ID: {self.bot_user.id}')
+        logging.info(f'Twitch Bot ID: {self.bot_user.id}')
         # Set up the pubsub
         pubsub = PubSub(self.twitch_bot)
         pubsub.start()
@@ -139,7 +140,7 @@ class TwitchBot(commands.Cog):
         self.chat.register_event(ChatEvent.JOINED, self.on_chat_joined)
         self.chat.register_event(ChatEvent.MESSAGE, self.on_chat_message)
         self.chat.start()
-        print('Chat listening')
+        logging.info('Twitch Chat listening')
 
 
 async def setup(bot):

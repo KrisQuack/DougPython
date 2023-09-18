@@ -14,7 +14,7 @@ class DMRelay(commands.Cog):
         if isinstance(message.channel, discord.DMChannel) and message.author != self.client.user:
             # Create the main embed
             embed = Embed(description=message.content, color=Color.blue())  # Using blue as a placeholder for color
-            embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.avatar.url)
+            embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.display_avatar.url)
             embed.timestamp = message.created_at
 
             # If there are attachments, add them to the embed
@@ -24,7 +24,7 @@ class DMRelay(commands.Cog):
                                      color=Color.blue())  # Using blue as a placeholder for color
                 attach_embed.set_image(url=attachment.url)
                 attach_embed.set_author(name=f"{message.author.name} ({message.author.id})",
-                                        icon_url=message.author.avatar.url)
+                                        icon_url=message.author.display_avatar.url)
                 attach_embed.timestamp = message.created_at
                 attachment_embeds.append(attach_embed)
 

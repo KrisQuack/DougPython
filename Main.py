@@ -1,5 +1,6 @@
 import asyncio
 import os
+import logging
 
 import discord
 from discord import Embed, Color
@@ -16,15 +17,15 @@ class Client(commands.Bot):
         self.first_run = True
 
     async def on_ready(self):
-        print(f'Logged on as {self.user}!')
+        logging.info(f'Logged on as {self.user}!')
 
     async def on_guild_available(self, guild: discord.Guild):
         if self.first_run:
             await self.register_cogs()
             synced = await self.tree.sync()
-            print(f'Command tree synced: {len(synced)}')
+            logging.info(f'Command tree synced: {len(synced)}')
             self.first_run = False
-        print(f'Guild available: {guild.name} ({guild.id})')
+        logging.info(f'Guild available: {guild.name} ({guild.id})')
 
     async def on_interaction(self, interaction: discord.Interaction):
         if interaction.type == discord.InteractionType.application_command:
@@ -37,26 +38,25 @@ class Client(commands.Bot):
                     [f"{option['name']}: {option['value']}" for option in interaction.data['options']])
                 embed.add_field(name="Command Options", value=options_str, inline=False)
             embed.set_author(name=f"{interaction.user.name} ({interaction.user.id})",
-                             icon_url=interaction.user.avatar.url)
+                             icon_url=interaction.user.display_avatar.url)
             # Send to log channel
             await(await BotSettings.get_log_channel(self)).send(embed=embed)
 
         if interaction.command_failed:
-            print(interaction.command_failed)
+            logging.error(interaction.command_failed)
 
     async def register_cogs(self):
         # Automatically load cogs from the 'Cogs/Commands/' folder
         for filename in os.listdir('./Cogs/Commands'):
             if filename.endswith('.py'):
-                print(f'Loading {filename[:-3]}')
                 await self.load_extension(f'Cogs.Commands.{filename[:-3]}')
         # Automatically load cogs from the 'Cogs/Systems/' folder
         for filename in os.listdir('./Cogs/Systems'):
             if filename.endswith('.py'):
-                print(f'Loading {filename[:-3]}')
                 await self.load_extension(f'Cogs.Systems.{filename[:-3]}')
-        print('All cogs loaded')
+        logging.info('Cogs loaded')
 
 
+discord.utils.setup_logging(level=logging.INFO)
 client = Client()
 client.run(os.environ.get('TOKEN'))

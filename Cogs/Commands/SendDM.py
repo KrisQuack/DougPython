@@ -28,7 +28,7 @@ class SendDM(commands.Cog):
         # Create the receipt embed for the mod team
         mod_embed = Embed(description=message, color=discord.Color.orange())
         mod_embed.set_author(name=f"DM to {user.name} ({user.id}) from {interaction.user.name}",
-                             icon_url=interaction.user.avatar.url)
+                             icon_url=interaction.user.display_avatar.url)
         mod_embed.timestamp = interaction.created_at
 
         # Assuming you have a way to get the DM receipt channel (replace with your method)

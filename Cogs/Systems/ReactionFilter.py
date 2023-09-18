@@ -1,3 +1,4 @@
+import logging
 import discord
 from discord.ext import commands, tasks
 
@@ -47,7 +48,7 @@ class ReactionFilter(commands.Cog):
                             # Remove the reaction
                             await message.clear_reaction(reaction.emoji)
         except Exception as e:
-            print(e)
+            logging.error(e)
 
     @ten_minute_loop.before_loop
     async def before_ten_minute_loop(self):

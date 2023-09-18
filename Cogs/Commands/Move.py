@@ -41,7 +41,7 @@ class Move(commands.Cog):
         author = message_to_move.author
         content = message_to_move.content
         username = author.display_name
-        avatar_url = author.avatar.url if author.avatar else None
+        avatar_url = author.display_avatar.url
 
         # Handle attachments
         if message_to_move.attachments:

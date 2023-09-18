@@ -1,3 +1,4 @@
+import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
@@ -58,8 +59,7 @@ class CheckYoutube(commands.Cog):
                         await youtube_config.update()
 
             except Exception as e:
-                print(
-                    f"[General/Warning] {datetime.utcnow().strftime('%H:%M:%S')} YoutubeChannel {youtube_config['id']} {e}")
+                logging.error(f"YoutubeChannel {youtube_config['id']} {e}")
 
     @monitor.before_loop
     async def before_monitor(self):

@@ -11,13 +11,13 @@ class AuditLog(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         embed = Embed(title="User Joined", color=Color.green())
-        embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.avatar.url)
+        embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
         await(await BotSettings.get_log_channel(self.client)).send(embed=embed)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         embed = Embed(title="User Left", color=Color.red())
-        embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.avatar.url)
+        embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
         await(await BotSettings.get_log_channel(self.client)).send(embed=embed)
 
     @commands.Cog.listener()
@@ -33,7 +33,7 @@ class AuditLog(commands.Cog):
                 embed.add_field(name="Roles Added", value=", ".join([role.mention for role in added_roles]))
             if removed_roles:
                 embed.add_field(name="Roles Removed", value=", ".join([role.mention for role in removed_roles]))
-        embed.set_author(name=f"{after.name} ({after.id})", icon_url=after.avatar.url)
+        embed.set_author(name=f"{after.name} ({after.id})", icon_url=after.display_avatar.url)
         if embed.fields:
             await(await BotSettings.get_log_channel(self.client)).send(embed=embed)
 
@@ -45,7 +45,7 @@ class AuditLog(commands.Cog):
         # Create the main embed for the deleted message
         main_embed = Embed(title=f"Message Deleted in {message.channel.name}", color=Color.red())
         main_embed.add_field(name="Content", value=message.content, inline=False)
-        main_embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.avatar.url)
+        main_embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.display_avatar.url)
 
         # List to hold all the embeds
         all_embeds = [main_embed]
@@ -69,7 +69,7 @@ class AuditLog(commands.Cog):
         embed.url = after.jump_url
         embed.add_field(name="Before", value=before.content, inline=False)
         embed.add_field(name="After", value=after.content, inline=False)
-        embed.set_author(name=f"{before.author.name} ({before.author.id})", icon_url=before.author.avatar.url)
+        embed.set_author(name=f"{before.author.name} ({before.author.id})", icon_url=before.author.display_avatar.url)
         await(await BotSettings.get_log_channel(self.client)).send(embed=embed)
 
 

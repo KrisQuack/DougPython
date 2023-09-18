@@ -24,7 +24,6 @@ class Timestamp(commands.Cog):
         # Check if the time zone is valid
         if timezone not in pytz.all_timezones:
             await interaction.response.send_message("Invalid time zone.", ephemeral=True)
-            print(pytz.all_timezones)
             return
 
         # Create a date string using the provided date and time
