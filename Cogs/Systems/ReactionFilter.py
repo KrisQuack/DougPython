@@ -1,9 +1,10 @@
 import discord
 from discord.ext import commands, tasks
 
+from Database.BotSettings import BotSettings
 
 class ReactionFilter(commands.Cog):
-    def __init__(self, client):
+    def __init__(self, client: commands.Bot):
         self.client = client
         self.ten_minute_loop.start()
         self.one_hour_loop.start()
@@ -19,13 +20,14 @@ class ReactionFilter(commands.Cog):
     async def reaction_filter(self, messageInt):
         try:
             # Assuming you have a list of whitelisted emote names
-            emote_whitelist = self.client.settings.reaction_filter_emotes
-            guild_emotes = self.client.settings.guild.emojis
+            emote_whitelist = await BotSettings.get_reaction_filter_emotes()
+            guild = await BotSettings.get_guild(self.client)
+            guild_emotes = guild.emojis
             emote_whitelist += [emote.name for emote in guild_emotes]
             # Get the mod role from settings
-            mod_role = self.client.settings.mod_role
+            mod_role = await BotSettings.get_mod_role(self.client)
 
-            for channel in self.client.settings.reaction_filter_channels:
+            for channel in await BotSettings.get_reaction_filter_channels(self.client):
                 if channel is None:
                     continue
                 messages = [msg async for msg in channel.history(limit=messageInt)]

@@ -12,15 +12,24 @@ from twitchAPI.pubsub import PubSub
 from uuid import UUID
 import aiohttp
 
+from Database.BotSettings import BotSettings
+
 
 class TwitchBot(commands.Cog):
-    def __init__(self, settings):
-        self.settings = settings
+    def __init__(self):
         self.BOT_TARGET_SCOPES = [AuthScope.CHAT_READ, AuthScope.CHAT_EDIT, AuthScope.MODERATION_READ]
         self.twitch_bot = None
         self.channel_user = None
         self.bot_user = None
         self.chat = None
+
+    async def initialize_async(self):
+        self.twitch_client_id = await BotSettings.get_twitch_client_id()
+        self.twitch_client_secret = await BotSettings.get_twitch_client_secret()
+        self.twitch_bot_name = await BotSettings.get_twitch_bot_name()
+        self.twitch_bot_refresh_token = await BotSettings.get_twitch_bot_refresh_token()
+        self.twitch_channel_name = await BotSettings.get_twitch_channel_name()
+        return self
 
     async def on_prediction_event(self, uuid: UUID, data: dict):
         event_type = data["type"]
@@ -96,7 +105,7 @@ class TwitchBot(commands.Cog):
 
     async def on_chat_ready(self, data: EventData):
         print('Chat is ready for work, joining channels')
-        await data.chat.join_room(self.settings.twitch_channel_name)
+        await data.chat.join_room(self.twitch_channel_name)
 
     async def on_chat_joined(self, data: EventData): 
         print(f"User {data.user_name} joined the chat {data.room_name}")
@@ -108,14 +117,14 @@ class TwitchBot(commands.Cog):
 
     async def run_twitch_bot(self):
         # Set up the Twitch instance for the bot
-        self.twitch_bot = await Twitch(self.settings.twitch_client_id,
-                                       self.settings.twitch_client_secret)
-        self.bot_user = await first(self.twitch_bot.get_users(logins=[self.settings.twitch_bot_name]))
+        self.twitch_bot = await Twitch(self.twitch_client_id,
+                                       self.twitch_client_secret)
+        self.bot_user = await first(self.twitch_bot.get_users(logins=[self.twitch_bot_name]))
         self.channel_user = await first(
-            self.twitch_bot.get_users(logins=self.settings.twitch_channel_name))
-        bot_tokens = await refresh_access_token(self.settings.twitch_bot_refresh_token,
-                                                self.settings.twitch_client_id,
-                                                self.settings.twitch_client_secret)
+            self.twitch_bot.get_users(logins=self.twitch_channel_name))
+        bot_tokens = await refresh_access_token(self.twitch_bot_refresh_token,
+                                                self.twitch_client_id,
+                                                self.twitch_client_secret)
         await self.twitch_bot.set_user_authentication(bot_tokens[0], self.BOT_TARGET_SCOPES,
                                                       refresh_token=bot_tokens[1])
         print(f'Twitch Bot ID: {self.bot_user.id}')
@@ -134,6 +143,6 @@ class TwitchBot(commands.Cog):
 
 
 async def setup(bot):
-    bot_cog = TwitchBot(bot.settings)
+    bot_cog = await TwitchBot().initialize_async()
     bot.loop.create_task(bot_cog.run_twitch_bot())
     await bot.add_cog(bot_cog)
