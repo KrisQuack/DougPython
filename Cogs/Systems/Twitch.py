@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from discord import Embed, Color
 from discord.ext import commands
-from discord import Webhook
+from discord import SyncWebhook
 from twitchAPI import Twitch
 from twitchAPI.chat import Chat, EventData, ChatMessage
 from twitchAPI.helper import first
@@ -11,13 +11,15 @@ from twitchAPI.oauth import refresh_access_token
 from twitchAPI.types import AuthScope, ChatEvent
 from twitchAPI.pubsub import PubSub
 from uuid import UUID
-import aiohttp
 
-from Database.BotSettings import BotSettings
+class PlaceholderThread:
+    def __init__(self, id):
+        self.id = id
 
 
 class TwitchBot(commands.Cog):
-    def __init__(self):
+    def __init__(self, client: commands.Bot):
+        self.client = client
         self.BOT_TARGET_SCOPES = [AuthScope.CHAT_READ, AuthScope.CHAT_EDIT, AuthScope.MODERATION_READ]
         self.twitch_bot = None
         self.channel_user = None
@@ -25,83 +27,89 @@ class TwitchBot(commands.Cog):
         self.chat = None
 
     async def initialize_async(self):
-        self.twitch_client_id = await BotSettings.get_twitch_client_id()
-        self.twitch_client_secret = await BotSettings.get_twitch_client_secret()
-        self.twitch_bot_name = await BotSettings.get_twitch_bot_name()
-        self.twitch_bot_refresh_token = await BotSettings.get_twitch_bot_refresh_token()
-        self.twitch_channel_name = await BotSettings.get_twitch_channel_name()
+        settingDict = self.client.settings.settingDict
+        self.twitch_client_id = settingDict["twitch_client_id"]
+        self.twitch_client_secret = settingDict["twitch_client_secret"]
+        self.twitch_bot_name = settingDict["twitch_bot_name"]
+        self.twitch_bot_refresh_token = settingDict["twitch_bot_refresh_token"]
+        self.twitch_channel_name = settingDict["twitch_channel_name"]
         return self
 
     async def on_prediction_event(self, uuid: UUID, data: dict):
+        # Extracting event type and prediction data
         event_type = data["type"]
         prediction = data["data"]
         embed = None
+        embedMessage = None
+
+        # Helper function to create an embed with a given title and color
+        def create_embed(title, color=Color.green()):
+            return Embed(title=title, color=color)
+
+        # Helper function to send the webhook message
+        def send_webhook(embed, message):
+            ##### ADD TO DATABASE #####
+            webhook = SyncWebhook.from_url('https://discord.com/api/webhooks/1153761373923315783/PmpyjoH58xx9N2SvpH6BYrxqVh1844FhJcFahUaqlGGq15RY35HfyI8iHWpu-SPPWdKc')
+            thread = PlaceholderThread(1070317311505997864)
+            webhook.send(message, embed=embed, thread=thread)
+
+        # Helper function to format the ISO string
+        def format_iso_str(iso_str):
+            iso_str = iso_str.rstrip("Z")
+            if "." in iso_str:
+                date_str, time_str = iso_str.split("T")
+                time_str, fractional = time_str.split(".")
+                fractional = fractional[:6]  # Truncate to 6 digits
+                return f"{date_str}T{time_str}.{fractional}"
+            return iso_str
+
+        # Handling event-created type
         if event_type == "event-created":
-            predictionTitle = prediction["event"]["title"]
-            embed = Embed(title=f"Prediction Created: {predictionTitle}", color=Color.green())
-            
-            # Calculate the UNIX timestamp for when the prediction will be locked
-            created_at = datetime.fromisoformat(prediction["event"]["created_at"].rstrip("Z"))
-            lock_time = created_at + timedelta(seconds=prediction["event"]["prediction_window_seconds"])
-            lock_timestamp = int(lock_time.timestamp())
-            
+            embed = create_embed(f"Prediction Created: {prediction['event']['title']}")
+            # Convert ISO string to datetime object
+            created_at = datetime.fromisoformat(format_iso_str(prediction["event"]["created_at"])).replace(tzinfo=timezone.utc)
+            # Calculate the lock timestamp
+            lock_timestamp = int((created_at + timedelta(seconds=prediction["event"]["prediction_window_seconds"])).timestamp())
+            embedMessage = '<@&1080237787174948936>'
             embed.description = f"Prediction will be locked <t:{lock_timestamp}:R>"
             embed.add_field(name="Outcomes", value="\n".join([f"{outcome['title']}: {outcome['color']}" for outcome in prediction["event"]["outcomes"]]), inline=False)
-            
-        if event_type == "event-updated" and prediction["event"]["status"] == "LOCKED":
+
+        # Handling event-updated type
+        elif event_type == "event-updated":
             predictionTitle = prediction["event"]["title"]
-            embed = Embed(title=f"Prediction Locked: {predictionTitle}", color=Color.green())
-            
-            for outcome in prediction["event"]["outcomes"]:
-                outcome_title = outcome["title"]
-                outcome_color = outcome["color"]
-                
-                top_predictors_text = []
-                for predictor in outcome["top_predictors"]:
-                    points_bet = predictor["points"]
-                    user_display_name = predictor["user_display_name"]
-                    top_predictors_text.append(f"{user_display_name} bet {points_bet} points")
-                
-                top_predictors_str = "\n".join(top_predictors_text) or "None"
-                
-                embed.add_field(name=f"Outcome: {outcome_title} ({outcome_color})", 
-                                value=f"Top Predictors:\n{top_predictors_str}", 
+            # Calculate total points and users for the event
+            total_points = sum(outcome["total_points"] for outcome in prediction["event"]["outcomes"])
+            total_users = sum(outcome["total_users"] for outcome in prediction["event"]["outcomes"])
+
+            # If the event status is LOCKED
+            if prediction["event"]["status"] == "LOCKED":
+                embed = create_embed(f"Prediction Locked: {predictionTitle}")
+                for outcome in prediction["event"]["outcomes"]:
+                    user_percentage = (outcome["total_users"] / total_users) * 100
+                    points_percentage = (outcome["total_points"] / total_points) * 100
+                    ratio = total_points / outcome["total_points"]
+                    top_predictors_str = "\n".join([f"{predictor['user_display_name']} bet {predictor['points']} points" for predictor in outcome["top_predictors"][:5]]) or "None"
+                    embed.add_field(name=f"Outcome: {outcome['title']} ({outcome['color']})", 
+                                value=f"Points: {outcome['total_points']} ({points_percentage:.2f}%)\nUsers: {outcome['total_users']} ({user_percentage:.2f}%)\nRatio: {ratio:.2f}\n**Top Predictors:**\n{top_predictors_str}", 
                                 inline=False)
-        if event_type == "event-updated" and prediction["event"]["status"] == "RESOLVED":
-            predictionTitle = prediction["event"]["title"]
-            embed = Embed(title=f"Prediction Resolved: {predictionTitle}", color=Color.green())
-            
-            winning_outcome_id = prediction["event"]["winning_outcome_id"]
-            
-            for outcome in prediction["event"]["outcomes"]:
-                outcome_title = outcome["title"]
-                outcome_color = outcome["color"]
-                total_points = outcome["total_points"]
-                total_users = outcome["total_users"]
-                ratio = 0 if total_users == 0 else total_points / total_users
-                
-                # Determine if this outcome was the winning one
-                is_winner = "✅" if outcome["id"] == winning_outcome_id else "❌"
-                
-                top_predictors_text = []
-                for predictor in outcome["top_predictors"]:
-                    result_type = predictor["result"]["type"]
-                    points_won = predictor["result"]["points_won"]
-                    user_display_name = predictor["user_display_name"]
-                    result_text = f"won {points_won} points" if result_type == "WIN" else f"lost {points_won} points"
-                    top_predictors_text.append(f"{user_display_name} {result_text}")
-                
-                top_predictors_str = "\n".join(top_predictors_text) or "None"
-                
-                embed.add_field(name=f"Outcome: {outcome_title} ({outcome_color}) {is_winner}", 
-                                value=f"Points: {total_points}\nUsers: {total_users}\nRatio: {ratio:.2f}\nTop Predictors:\n{top_predictors_str}", 
+
+            # If the event status is RESOLVED
+            elif prediction["event"]["status"] == "RESOLVED":
+                embed = create_embed(f"Prediction Resolved: {predictionTitle}")
+                winning_outcome_id = prediction["event"]["winning_outcome_id"]
+
+                for outcome in prediction["event"]["outcomes"]:
+                    is_winner = "✅" if outcome["id"] == winning_outcome_id else "❌"
+                    ratio = total_points / outcome["total_points"]
+                    result_text = "\n".join([f"{predictor['user_display_name']} {'won' if predictor['result']['type'] == 'WIN' else 'lost'} {predictor['result'].get('points_won', predictor['points'])} points" for predictor in outcome["top_predictors"][:5]]) or "None"
+                    embed.add_field(name=f"Outcome: {outcome['title']} ({outcome['color']}) {is_winner}", 
+                                value=f"Points: {outcome['total_points']} ({points_percentage:.2f}%)\nUsers: {outcome['total_users']} ({user_percentage:.2f}%)\nRatio: {ratio:.2f}\n**Top Predictors:**\n{result_text}", 
                                 inline=False)
-        
+
+        # If an embed was created, send it via webhook
         if embed:
-            ##### set these in the database #####
-            async with aiohttp.ClientSession() as session:
-                webhook = Webhook.from_url('https://discord.com/api/webhooks/1151245523404193802/X1pFAQTYO7mf4V5O6rCorUUiAjO5DrBptoIyKpvmJaLR7VOaI8TGWtWNM-JGS1JBKUA3', session=session)
-                await webhook.send('<@&1080237787174948936>', embed=embed)
+            send_webhook(embed, embedMessage)
+
 
 
     async def on_chat_ready(self, data: EventData):
@@ -144,6 +152,6 @@ class TwitchBot(commands.Cog):
 
 
 async def setup(bot):
-    bot_cog = await TwitchBot().initialize_async()
+    bot_cog = await TwitchBot(bot).initialize_async()
     bot.loop.create_task(bot_cog.run_twitch_bot())
     await bot.add_cog(bot_cog)

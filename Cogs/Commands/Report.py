@@ -2,8 +2,6 @@ import discord
 from discord import app_commands, ui, Embed
 from discord.ext import commands
 
-from Database.BotSettings import BotSettings
-
 
 class Report(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -72,7 +70,7 @@ class ReportModal(ui.Modal, title="Report"):
             embed.timestamp = interaction.created_at
             embeds.append(embed)
         try:
-            (await BotSettings.get_report_channel(self.client)).send(embeds=embeds)
+            await self.client.settings.report_channel.send(embeds=embeds)
             await interaction.response.send_message("Your report has been sent to the mods.", ephemeral=True)
         except Exception:
             await interaction.response.send_message(

@@ -1,126 +1,51 @@
-import os
-
-from sqlalchemy import Column, Integer, String, ARRAY, select
-from Database.DatabaseConfig import Session, Base
+import logging
+from Database.DatabaseConfig import DatabaseConfig
 from discord.ext import commands
 
-class BotSettings(Base):
-    __tablename__ = 'bot_settings'
+class YouTubeSetting:
+    def __init__(self, data):
+        self.id = data['id']
+        self.youtube_id = data['youtube_id']
+        self.mention_role_id = data['mention_role_id']
+        self.post_channel_id = data['post_channel_id']
+        self.last_video_id = data['last_video_id']
 
-    id = Column(Integer, primary_key=True)
-    reaction_filter_emotes = Column(ARRAY(String))
-    twitch_bot_name = Column(String)
-    twitch_bot_refresh_token = Column(String)
-    twitch_channel_name = Column(String)
-    twitch_client_id = Column(String)
-    twitch_client_secret = Column(String)
-    guild_id = Column(Integer)
-    dm_receipt_channel_id = Column(Integer)
-    log_blacklist_channels = Column(ARRAY(Integer))
-    log_channel_id = Column(Integer)
-    reaction_filter_channels = Column(ARRAY(Integer))
-    report_channel_id = Column(Integer)
-    mod_role_id = Column(Integer)
 
-    @classmethod
-    async def get_reaction_filter_emotes(cls):
-        async with Session() as session:
-            stmt = select(cls.reaction_filter_emotes)
-            result = await session.execute(stmt)
-            return result.scalar()
+class BotSettings:
+    def __init__(self, client: commands.Bot = None):
+        database = DatabaseConfig().database
+        self.container = database.get_container_client('BotSettings')
+        self.get_settings(client)
+        logging.info("Loaded BotSettings")
 
-    @classmethod
-    async def set_reaction_filter_emotes(cls, value):
-        async with Session() as session:
-            stmt = cls.__table__.update().values(reaction_filter_emotes=value)
-            await session.execute(stmt)
-            await session.commit()
-
-    @classmethod
-    async def get_twitch_bot_name(cls):
-        async with Session() as session:
-            stmt = select(cls.twitch_bot_name)
-            result = await session.execute(stmt)
-            return result.scalar()
-
-    @classmethod
-    async def get_twitch_bot_refresh_token(cls):
-        async with Session() as session:
-            stmt = select(cls.twitch_bot_refresh_token)
-            result = await session.execute(stmt)
-            return result.scalar()
-
-    @classmethod
-    async def get_twitch_channel_name(cls):
-        async with Session() as session:
-            stmt = select(cls.twitch_channel_name)
-            result = await session.execute(stmt)
-            return result.scalar()
-
-    @classmethod
-    async def get_twitch_client_id(cls):
-        async with Session() as session:
-            stmt = select(cls.twitch_client_id)
-            result = await session.execute(stmt)
-            return result.scalar()
-        
-    @classmethod
-    async def get_twitch_client_secret(cls):
-        async with Session() as session:
-            stmt = select(cls.twitch_client_secret)
-            result = await session.execute(stmt)
-            return result.scalar()
-        
-    @classmethod
-    async def get_guild(cls, client: commands.Bot):
-        async with Session() as session:
-            stmt = select(cls.guild_id)
-            result = await session.execute(stmt)
-            return client.get_guild(result.scalar())
-        
-    @classmethod
-    async def get_dm_receipt_channel(cls, client: commands.Bot):
-        async with Session() as session:
-            stmt = select(cls.dm_receipt_channel_id)
-            result = await session.execute(stmt)
-            return client.get_channel(result.scalar())
-        
-    @classmethod
-    async def get_log_blacklist_channels(cls, client: commands.Bot):
-        async with Session() as session:
-            stmt = select(cls.log_blacklist_channels)
-            result = await session.execute(stmt)
-            return [client.get_channel(channel_id) for channel_id in result.scalar()]
-        
-    @classmethod
-    async def get_log_channel(cls, client: commands.Bot):
-        async with Session() as session:
-            stmt = select(cls.log_channel_id)
-            result = await session.execute(stmt)
-            return client.get_channel(result.scalar())
-        
-    @classmethod
-    async def get_reaction_filter_channels(cls, client: commands.Bot):
-        async with Session() as session:
-            stmt = select(cls.reaction_filter_channels)
-            result = await session.execute(stmt)
-            return [client.get_channel(channel_id) for channel_id in result.scalar()]
-        
-    @classmethod
-    async def get_report_channel(cls, client: commands.Bot):
-        async with Session() as session:
-            stmt = select(cls.report_channel_id)
-            result = await session.execute(stmt)
-            return client.get_channel(result.scalar())
-        
-    @classmethod
-    async def get_mod_role(cls, client: commands.Bot):
-        async with Session() as session:
-            stmt = select(cls.guild_id, cls.mod_role_id)
-            result = await session.execute(stmt)
-            row = result.fetchone()
-            if row:
-                guild_id, mod_role_id = row
-                guild = client.get_guild(guild_id)
-                return guild.get_role(mod_role_id)
-            return None
+    def get_settings(self, client: commands.Bot):
+      # Load settings from database
+      result = self.container.read_item('1', '1')
+      self.settingDict = result
+      # Set settings as attributes
+      self.youtube_settings = [YouTubeSetting(data) for data in result['youtube_settings']]
+      # Set some discord attributes
+      if client is not None:
+        # Get int values
+        dm_receipt_channel_id = int(result['dm_receipt_channel_id'])
+        guild_id = int(result['guild_id'])
+        log_blacklist_channels = [int(channel_id) for channel_id in result['log_blacklist_channels']]
+        log_channel_id = int(result['log_channel_id'])
+        mod_role_id = int(result['mod_role_id'])
+        reaction_filter_channels = [int(channel_id) for channel_id in result['reaction_filter_channels']]
+        report_channel_id = int(result['report_channel_id'])
+        # Set attributes
+        self.dm_receipt_channel = client.get_channel(dm_receipt_channel_id)
+        self.guild = client.get_guild(guild_id)
+        self.log_blacklist_channels = [client.get_channel(channel_id) for channel_id in log_blacklist_channels]
+        self.log_channel = client.get_channel(log_channel_id)
+        self.mod_role = self.guild.get_role(mod_role_id)
+        self.reaction_filter_channels = [client.get_channel(channel_id) for channel_id in reaction_filter_channels]
+        self.report_channel = client.get_channel(report_channel_id)
+        # Print if any are None
+        if self.dm_receipt_channel is None or self.guild is None or self.log_channel is None or self.mod_role is None or self.report_channel is None or len(self.log_blacklist_channels) != len(log_blacklist_channels) or len(self.reaction_filter_channels) != len(reaction_filter_channels):
+          logging.error("BotSettings failed to load some discord attributes")
+    
+    def update_settings(self):
+        self.container.upsert_item(self.settingDict)
+        logging.info(f"Updated BotSettings")

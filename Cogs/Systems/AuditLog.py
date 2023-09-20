@@ -2,8 +2,6 @@ import discord
 from discord import Embed, Color
 from discord.ext import commands
 
-from Database.BotSettings import BotSettings
-
 class AuditLog(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
@@ -12,13 +10,13 @@ class AuditLog(commands.Cog):
     async def on_member_join(self, member: discord.Member):
         embed = Embed(title="User Joined", color=Color.green())
         embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
-        await(await BotSettings.get_log_channel(self.client)).send(embed=embed)
+        await self.client.settings.log_channel.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         embed = Embed(title="User Left", color=Color.red())
         embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
-        await(await BotSettings.get_log_channel(self.client)).send(embed=embed)
+        await self.client.settings.log_channel.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -35,7 +33,7 @@ class AuditLog(commands.Cog):
                 embed.add_field(name="Roles Removed", value=", ".join([role.mention for role in removed_roles]))
         embed.set_author(name=f"{after.name} ({after.id})", icon_url=after.display_avatar.url)
         if embed.fields:
-            await(await BotSettings.get_log_channel(self.client)).send(embed=embed)
+            await self.client.settings.log_channel.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
@@ -57,7 +55,7 @@ class AuditLog(commands.Cog):
             all_embeds.append(attachment_embed)
 
         # Send all embeds in one go
-        await(await BotSettings.get_log_channel(self.client)).send(embeds=all_embeds)
+        await self.client.settings.log_channel.send(embeds=all_embeds)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -70,7 +68,7 @@ class AuditLog(commands.Cog):
         embed.add_field(name="Before", value=before.content, inline=False)
         embed.add_field(name="After", value=after.content, inline=False)
         embed.set_author(name=f"{before.author.name} ({before.author.id})", icon_url=before.author.display_avatar.url)
-        await(await BotSettings.get_log_channel(self.client)).send(embed=embed)
+        await self.client.settings.log_channel.send(embed=embed)
 
 
 async def setup(self: commands.Bot) -> None:

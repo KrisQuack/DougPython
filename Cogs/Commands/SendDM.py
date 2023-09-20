@@ -2,8 +2,6 @@ import discord
 from discord import app_commands, Embed
 from discord.ext import commands
 
-from Database.BotSettings import BotSettings
-
 class SendDM(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
@@ -32,7 +30,7 @@ class SendDM(commands.Cog):
         mod_embed.timestamp = interaction.created_at
 
         # Assuming you have a way to get the DM receipt channel (replace with your method)
-        (await BotSettings.get_dm_receipt_channel(self.client)).send(embed=mod_embed)
+        await self.client.settings.dm_receipt_channel.send(embed=mod_embed)
         await interaction.response.send_message("DM Sent", ephemeral=True)
 
 

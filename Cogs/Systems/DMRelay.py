@@ -2,8 +2,6 @@ import discord
 from discord import Embed, Color
 from discord.ext import commands
 
-from Database.BotSettings import BotSettings
-
 class DMRelay(commands.Cog):
     def __init__(self, client):
         self.client = client
@@ -29,7 +27,7 @@ class DMRelay(commands.Cog):
                 attachment_embeds.append(attach_embed)
 
             # Send the main embed and any attachment embeds to the specified channel
-            dmChannel = await BotSettings.get_dm_receipt_channel(self.client)
+            dmChannel = self.client.settings.dm_receipt_channel
             await dmChannel.send(embed=embed)
             for attach_embed in attachment_embeds:
                 await dmChannel.send(embed=attach_embed)

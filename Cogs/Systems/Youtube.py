@@ -5,7 +5,8 @@ from datetime import datetime
 import aiohttp
 import discord
 from discord.ext import commands, tasks
-from Database.YoutubeSettings import YoutubeSettings
+
+from Database.BotSettings import BotSettings
 
 
 class CheckYoutube(commands.Cog):
@@ -16,11 +17,11 @@ class CheckYoutube(commands.Cog):
 
     @tasks.loop(minutes=10)
     async def monitor(self):
-        youtube_settings = await YoutubeSettings.get_all()
-        for youtube_config in youtube_settings:
+        settings = BotSettings()
+        for youtube_config in settings.settingDict['youtube_settings']:
             try:
                 async with self.session.get(
-                        f'https://www.youtube.com/feeds/videos.xml?channel_id={youtube_config.youtube_id}') as r:
+                        f'https://www.youtube.com/feeds/videos.xml?channel_id={youtube_config["youtube_id"]}') as r:
                     if r.status == 200:
                         text = await r.text()
                         root = ET.fromstring(text)
@@ -41,7 +42,7 @@ class CheckYoutube(commands.Cog):
                         video_id = latest_video.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
                         video_url = latest_video.find("{http://www.w3.org/2005/Atom}link").attrib['href']
 
-                        last_video_id = youtube_config.last_video_id
+                        last_video_id = youtube_config['last_video_id']
                         if video_id == last_video_id or last_video_id is None:
                             continue
 
@@ -50,16 +51,16 @@ class CheckYoutube(commands.Cog):
                         embed.set_author(name=channel_name, url=channel_url)
                         embed.set_image(url=video_thumbnail)
 
-                        post_channel = self.client.get_channel(youtube_config.post_channel_id)
-                        mention_role = f'<@&{youtube_config.mention_role_id}>'
+                        post_channel = self.client.get_channel(int(youtube_config['post_channel_id']))
+                        mention_role = f'<@&{youtube_config["mention_role_id"]}>'
                         await post_channel.send(f"{mention_role}", embed=embed)
 
                         # Update the last video ID
-                        youtube_config.last_video_id = video_id
-                        await youtube_config.update()
-
+                        youtube_config['last_video_id'] = video_id
             except Exception as e:
-                logging.error(f"YoutubeChannel {youtube_config['id']} {e}")
+                logging.error(f"YoutubeChannel: {youtube_config['id']} {e}")
+
+        settings.update_settings()
 
     @monitor.before_loop
     async def before_monitor(self):

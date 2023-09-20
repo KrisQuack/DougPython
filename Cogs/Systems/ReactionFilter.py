@@ -2,8 +2,6 @@ import logging
 import discord
 from discord.ext import commands, tasks
 
-from Database.BotSettings import BotSettings
-
 class ReactionFilter(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
@@ -21,14 +19,14 @@ class ReactionFilter(commands.Cog):
     async def reaction_filter(self, messageInt):
         try:
             # Assuming you have a list of whitelisted emote names
-            emote_whitelist = await BotSettings.get_reaction_filter_emotes()
-            guild = await BotSettings.get_guild(self.client)
+            emote_whitelist = self.client.settings.settingDict['reaction_filter_emotes']
+            guild = self.client.settings.guild
             guild_emotes = guild.emojis
             emote_whitelist += [emote.name for emote in guild_emotes]
             # Get the mod role from settings
-            mod_role = await BotSettings.get_mod_role(self.client)
+            mod_role = self.client.settings.mod_role
 
-            for channel in await BotSettings.get_reaction_filter_channels(self.client):
+            for channel in self.client.settings.reaction_filter_channels:
                 if channel is None:
                     continue
                 messages = [msg async for msg in channel.history(limit=messageInt)]
@@ -48,7 +46,7 @@ class ReactionFilter(commands.Cog):
                             # Remove the reaction
                             await message.clear_reaction(reaction.emoji)
         except Exception as e:
-            logging.error(e)
+            logging.error('ReactionFilter: ' + e)
 
     @ten_minute_loop.before_loop
     async def before_ten_minute_loop(self):

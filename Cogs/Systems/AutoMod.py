@@ -2,8 +2,7 @@ import discord
 from discord import AutoModAction, Embed, Color
 from discord.ext import commands
 import re
-
-from Database.BotSettings import BotSettings
+import datetime
 
 class AutoMod(commands.Cog):
     def __init__(self, client):
@@ -14,16 +13,16 @@ class AutoMod(commands.Cog):
         ## Deez Nutz ##
         if action.rule_id == 1119010971290189946:
             # Get users message history
-            guild = await BotSettings.get_guild(self.client)
+            guild = self.client.settings.guild
             member = guild.get_member(action.user_id)
             # Get timestamp for one week ago
-            one_week_ago = action.timestamp - discord.Duration(weeks=1)
+            one_week_ago = datetime.datetime.now() - datetime.timedelta(days=7)
             messages = [msg async for msg in member.history(limit=10000, after=one_week_ago)]
             print(f"Deez Nutz ({len(messages)} messages) - {member.name} ({member.id})")
             # Count messages that match regex
             regex = action.matched_keyword
             count = 0
-            async for message in messages:
+            for message in messages:
                 if re.search(regex, message.content):
                     count += 1
             # Time out the user based on the count, incrementing hours like 1,2,4,8

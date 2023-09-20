@@ -1,6 +1,5 @@
-import asyncio
-import os
 import logging
+import os
 
 import discord
 from discord import Embed, Color
@@ -21,6 +20,7 @@ class Client(commands.Bot):
 
     async def on_guild_available(self, guild: discord.Guild):
         if self.first_run:
+            self.settings = BotSettings(self)
             await self.register_cogs()
             synced = await self.tree.sync()
             logging.info(f'Command tree synced: {len(synced)}')
@@ -40,10 +40,10 @@ class Client(commands.Bot):
             embed.set_author(name=f"{interaction.user.name} ({interaction.user.id})",
                              icon_url=interaction.user.display_avatar.url)
             # Send to log channel
-            await(await BotSettings.get_log_channel(self)).send(embed=embed)
+            await self.settings.log_channel.send(embed=embed)
 
         if interaction.command_failed:
-            logging.error(interaction.command_failed)
+            logging.error('Interaction: ' + interaction.command_failed)
 
     async def register_cogs(self):
         # Automatically load cogs from the 'Cogs/Commands/' folder
@@ -54,9 +54,9 @@ class Client(commands.Bot):
         for filename in os.listdir('./Cogs/Systems'):
             if filename.endswith('.py'):
                 await self.load_extension(f'Cogs.Systems.{filename[:-3]}')
+        # Complete
         logging.info('Cogs loaded')
 
-
-discord.utils.setup_logging(level=logging.INFO)
+discord.utils.setup_logging(level=logging.WARNING)
 client = Client()
 client.run(os.environ.get('TOKEN'))
