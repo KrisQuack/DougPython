@@ -8,18 +8,16 @@ class ThreadWelcomeCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread):
+        if not isinstance(thread.parent, discord.ForumChannel):
+            return
         # Pin the first message
         await [msg async for msg in thread.history(limit=1)][0].pin()
         # Create the embed
         embed = discord.Embed(
-            title="Welcome to your new thread!",
+            title="Welcome to Your Thread!",
             description=(
-                "Please remember the server rules still apply. "
-                "If you have any issues, please contact the moderation team. "
-                "More info: [here](https://discord.com/channels/567141138021089308/880127379119415306/1132052471481638932)\n"
-                f"<@{thread.owner_id}> as the owner you may also Pin and Unpin posts in your thread, "
-                "Just right click (hold down on mobile) on a message, select Apps and then Pin or Unpin. "
-                "[Example](https://cdn.discordapp.com/attachments/886548334154760242/1135511848817545236/image.png)"
+                "Server rules apply. Issues? Contact [mod team](https://discord.com/channels/567141138021089308/880127379119415306/1132052471481638932).\n"
+                f"<@{thread.owner_id}>: You can Pin/Unpin posts. [How?](https://cdn.discordapp.com/attachments/886548334154760242/1135511848817545236/image.png)"
             ),
             color=discord.Color.orange()
         )

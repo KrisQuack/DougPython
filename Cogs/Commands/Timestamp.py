@@ -78,7 +78,7 @@ class Timestamp(commands.Cog):
             current: str,
     ) -> List[app_commands.Choice[str]]:
         return [
-            app_commands.Choice(name=datetime.now().strftime('%d/%b/%Y'), value=datetime.now().strftime('%d/%b/%Y'))]
+            app_commands.Choice(name=datetime.utcnow().strftime('%d/%b/%Y'), value=datetime.utcnow().strftime('%d/%b/%Y'))]
 
     @timestamp.autocomplete('time')
     async def timezones_autocomplete(
@@ -86,7 +86,7 @@ class Timestamp(commands.Cog):
             interaction: discord.Interaction,
             current: str,
     ) -> List[app_commands.Choice[str]]:
-        return [app_commands.Choice(name=datetime.now().strftime('%H:%M'), value=datetime.now().strftime('%H:%M'))]
+        return [app_commands.Choice(name=datetime.utcnow().strftime('%H:%M'), value=datetime.utcnow().strftime('%H:%M'))]
 
 
 async def setup(self: commands.Bot) -> None:

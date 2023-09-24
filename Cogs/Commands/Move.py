@@ -17,10 +17,11 @@ class Move(commands.Cog):
         message_id="The ID of the message to move",
         channel="The channel to move the message to"
     )
-    async def move(self, interaction: discord.Interaction, message_id: str, channel: discord.TextChannel):
+    async def move(self, interaction: discord.Interaction, message_id: str, channel: discord.TextChannel|discord.Thread):
         await interaction.response.defer()
         # Identify if it's a thread
         if isinstance(channel, discord.Thread):
+            thread = channel
             channel = channel.parent
 
         # Fetch the message to move
@@ -52,7 +53,10 @@ class Move(commands.Cog):
                 await webhook.send(content=content, username=username, avatar_url=avatar_url,
                                    embeds=message_to_move.embeds, files=files)
         else:
-            await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds)
+            if thread:
+                await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds, thread=thread)
+            else:
+                await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds)
 
         await message_to_move.delete()
         await interaction.followup.send(f"{author.mention} your message has been moved to {channel.mention}")

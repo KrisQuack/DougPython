@@ -17,8 +17,9 @@ class CheckYoutube(commands.Cog):
 
     @tasks.loop(minutes=10)
     async def monitor(self):
-        settings = BotSettings()
-        for youtube_config in settings.settingDict['youtube_settings']:
+        # Make sure the settings are loaded
+        await self.client.settings.get_settings(self.client)
+        for youtube_config in self.client.settings.dict['youtube_settings']:
             try:
                 async with self.session.get(
                         f'https://www.youtube.com/feeds/videos.xml?channel_id={youtube_config["youtube_id"]}') as r:
@@ -53,6 +54,11 @@ class CheckYoutube(commands.Cog):
 
                         post_channel = self.client.get_channel(int(youtube_config['post_channel_id']))
                         mention_role = f'<@&{youtube_config["mention_role_id"]}>'
+                        
+                        ## If is the vod channel and title does not contain VOD
+                        if youtube_config['youtube_id'] == 'UCzL0SBEypNk4slpzSbxo01g' and video_title.find('VOD') == -1:
+                            mention_role = f'<@&812501073289805884>'
+
                         await post_channel.send(f"{mention_role}", embed=embed)
 
                         # Update the last video ID
@@ -60,7 +66,7 @@ class CheckYoutube(commands.Cog):
             except Exception as e:
                 logging.error(f"YoutubeChannel: {youtube_config['id']} {e}")
 
-        settings.update_settings()
+        await self.client.settings.update_settings()
 
     @monitor.before_loop
     async def before_monitor(self):

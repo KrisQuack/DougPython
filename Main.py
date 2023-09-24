@@ -5,12 +5,14 @@ import discord
 from discord import Embed, Color
 from discord.ext import commands
 
+from Database.DatabaseConfig import DatabaseConfig
 from Database.BotSettings import BotSettings
+from Database.DiscordMember import DiscordMember
 
 
 class Client(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('!'), intents=discord.Intents.all(),
+        super().__init__(command_prefix=commands.when_mentioned_or('✵'), intents=discord.Intents.all(),
                          help_command=None)
         # Define first run
         self.first_run = True
@@ -20,7 +22,9 @@ class Client(commands.Bot):
 
     async def on_guild_available(self, guild: discord.Guild):
         if self.first_run:
-            self.settings = BotSettings(self)
+            self.database = DatabaseConfig()
+            self.settings = BotSettings(self.database)
+            await self.settings.get_settings(self)
             await self.register_cogs()
             synced = await self.tree.sync()
             logging.info(f'Command tree synced: {len(synced)}')
@@ -59,4 +63,4 @@ class Client(commands.Bot):
 
 discord.utils.setup_logging(level=logging.WARNING)
 client = Client()
-client.run(os.environ.get('TOKEN'))
+client.run(os.environ.get('TOKEN'), log_handler=None)

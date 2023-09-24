@@ -16,7 +16,7 @@ class AutoMod(commands.Cog):
             guild = self.client.settings.guild
             member = guild.get_member(action.user_id)
             # Get timestamp for one week ago
-            one_week_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+            one_week_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
             messages = [msg async for msg in member.history(limit=10000, after=one_week_ago)]
             print(f"Deez Nutz ({len(messages)} messages) - {member.name} ({member.id})")
             # Count messages that match regex

@@ -27,7 +27,7 @@ class TwitchBot(commands.Cog):
         self.chat = None
 
     async def initialize_async(self):
-        settingDict = self.client.settings.settingDict
+        settingDict = self.client.settings.dict
         self.twitch_client_id = settingDict["twitch_client_id"]
         self.twitch_client_secret = settingDict["twitch_client_secret"]
         self.twitch_bot_name = settingDict["twitch_bot_name"]
@@ -97,13 +97,17 @@ class TwitchBot(commands.Cog):
             elif prediction["event"]["status"] == "RESOLVED":
                 embed = create_embed(f"Prediction Resolved: {predictionTitle}")
                 winning_outcome_id = prediction["event"]["winning_outcome_id"]
+                total_points = sum(outcome["total_points"] for outcome in prediction["event"]["outcomes"])
+                total_users = sum(outcome["total_users"] for outcome in prediction["event"]["outcomes"])
 
                 for outcome in prediction["event"]["outcomes"]:
                     is_winner = "✅" if outcome["id"] == winning_outcome_id else "❌"
+                    user_percentage = (outcome["total_users"] / total_users) * 100
+                    points_percentage = (outcome["total_points"] / total_points) * 100
                     ratio = total_points / outcome["total_points"]
-                    result_text = "\n".join([f"{predictor['user_display_name']} {'won' if predictor['result']['type'] == 'WIN' else 'lost'} {predictor['result'].get('points_won', predictor['points'])} points" for predictor in outcome["top_predictors"][:5]]) or "None"
+                    top_predictors_str = "\n".join([f"{predictor['user_display_name']} {'won' if predictor['result']['type'] == 'WIN' else 'lost'} {predictor['result'].get('points_won', predictor['points'])} points" for predictor in outcome["top_predictors"][:5]]) or "None"
                     embed.add_field(name=f"Outcome: {outcome['title']} ({outcome['color']}) {is_winner}", 
-                                value=f"Points: {outcome['total_points']} ({points_percentage:.2f}%)\nUsers: {outcome['total_users']} ({user_percentage:.2f}%)\nRatio: {ratio:.2f}\n**Top Predictors:**\n{result_text}", 
+                                value=f"Points: {outcome['total_points']} ({points_percentage:.2f}%)\nUsers: {outcome['total_users']} ({user_percentage:.2f}%)\nRatio: {ratio:.2f}\n**Top Predictors:**\n{top_predictors_str}", 
                                 inline=False)
 
         # If an embed was created, send it via webhook

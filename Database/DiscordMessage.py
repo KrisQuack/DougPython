@@ -1,57 +1,70 @@
-from sqlalchemy import Column, String, BigInteger, select,ForeignKey, TIMESTAMP, Boolean
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY
-
+from datetime import datetime
+from Database.DatabaseConfig import DatabaseConfig
 from discord import Message
 
-from Database.DatabaseConfig import Session, Base
+class DiscordMessage:
+    def __init__(self, database: DatabaseConfig):
+        self.container = database.DiscordMessage
+        self.dict = None
 
-class DiscordMessage(Base):
-    __tablename__ = 'discord_messages'
+    def get_all_messages(self):
+        # Get all messages from the database
+        query = "SELECT * FROM c"
+        items = self.container.query_items(query=query)
+        return items
 
-    id = Column(BigInteger, primary_key=True)
-    content = Column(JSONB)  # Dictionary of timestamp and value
-    attachments = Column(ARRAY(String))
-    created_at = Column(TIMESTAMP)
-    jump_url = Column(String)
-    reference = Column(BigInteger)
-    author_id = Column(BigInteger, ForeignKey('discord_members.id'))
-    channel_id = Column(BigInteger)
-    deleted = Column(Boolean)
+    async def load_message(self, message_id):
+        try:
+            message_id_str = str(message_id)
+            self.dict = await self.container.read_item(message_id_str,message_id_str)
+        except Exception as e:
+            self.dict = None
+        
+    async def update_message(self):
+        await self.container.upsert_item(self.dict)
+    
+    async def insert_message(self, message: Message):
+        # Check if message already exists
+        await self.load_message(message.id)
+        if self.dict is not None:
+            return
+        # Get the current time for the change
+        current_time = datetime.utcnow().isoformat()
+        # convert message to dict and insert
+        await self.container.create_item(
+          {
+              "id": str(message.id),
+              "author_id": str(message.author.id),
+              "channel_id": str(message.channel.id),
+              "jump_url": message.jump_url,
+              "content": [{"value": message.content, "changed_at": current_time}],
+              "created_at": message.created_at.isoformat(),
+              "deleted_at": None
+          }
+        )
 
-    @classmethod
-    async def get_all(cls):
-        async with Session() as session:
-            stmt = select(cls)
-            results = await session.execute(stmt)
-            return results.scalars().all()
-
-    async def update(self):
-        async with Session() as session:
-            session.add(self)
-            await session.commit()
-
-    @classmethod
-    async def insert(cls, message: Message):
-        async with Session() as session:
-            result = await session.execute(select(cls).filter_by(id=message.id))
-            existing_message = result.scalar_one_or_none()
-            if existing_message:
-                return
-            new_message = cls(
-                id=message.id,
-                content={str(message.created_at): message.content},
-                attachments=[attachment.url for attachment in message.attachments],
-                created_at=message.created_at,
-                jump_url=message.jump_url,
-                reference=message.reference.message_id if message.reference else None,
-                author_id=message.author.id,
-                channel_id=message.channel.id,
-                deleted=False  # Initially set to False
-            )
-            session.add(new_message)
-            await session.commit()
-
-    @classmethod
-    async def get(cls, message_id: int):
-        async with Session() as session:
-            return session.query(cls).filter_by(id=message_id).first()
+    async def update_message_content(self, message: Message, new_value: str):
+      # Check if message already exists
+      await self.load_message(message.id)
+      if self.dict is None:
+          await self.insert_message(message)
+          return
+      
+      # Check if the new value is different from the last value in history
+      if self.dict["content"][-1]['value'] != new_value:
+          # Update the attribute's history
+          current_time = datetime.utcnow().isoformat()
+          self.dict["content"].append({"value": new_value, "changed_at": current_time})
+          
+          # Upsert the updated data back into the container
+          await self.update_message()
+    
+    async def update_message_deleted(self, message: Message):
+        # Check if message already exists
+        await self.load_message(message.id)
+        if self.dict is None:
+            await self.insert_message(message)
+            return
+        
+        self.dict["deleted_at"] = datetime.utcnow().isoformat()
+        await self.update_message()

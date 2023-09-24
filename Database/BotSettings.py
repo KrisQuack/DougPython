@@ -2,28 +2,14 @@ import logging
 from Database.DatabaseConfig import DatabaseConfig
 from discord.ext import commands
 
-class YouTubeSetting:
-    def __init__(self, data):
-        self.id = data['id']
-        self.youtube_id = data['youtube_id']
-        self.mention_role_id = data['mention_role_id']
-        self.post_channel_id = data['post_channel_id']
-        self.last_video_id = data['last_video_id']
-
-
 class BotSettings:
-    def __init__(self, client: commands.Bot = None):
-        database = DatabaseConfig().database
-        self.container = database.get_container_client('BotSettings')
-        self.get_settings(client)
-        logging.info("Loaded BotSettings")
+    def __init__(self, database: DatabaseConfig):
+        self.container = database.BotSettings
 
-    def get_settings(self, client: commands.Bot):
+    async def get_settings(self, client: commands.Bot = None):
       # Load settings from database
-      result = self.container.read_item('1', '1')
-      self.settingDict = result
-      # Set settings as attributes
-      self.youtube_settings = [YouTubeSetting(data) for data in result['youtube_settings']]
+      result = await self.container.read_item('1', '1')
+      self.dict = result
       # Set some discord attributes
       if client is not None:
         # Get int values
@@ -46,6 +32,6 @@ class BotSettings:
         if self.dm_receipt_channel is None or self.guild is None or self.log_channel is None or self.mod_role is None or self.report_channel is None or len(self.log_blacklist_channels) != len(log_blacklist_channels) or len(self.reaction_filter_channels) != len(reaction_filter_channels):
           logging.error("BotSettings failed to load some discord attributes")
     
-    def update_settings(self):
-        self.container.upsert_item(self.settingDict)
+    async def update_settings(self):
+        await self.container.upsert_item(self.dict)
         logging.info(f"Updated BotSettings")
