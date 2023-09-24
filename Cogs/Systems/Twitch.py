@@ -33,6 +33,7 @@ class TwitchBot(commands.Cog):
         self.twitch_bot_name = settingDict["twitch_bot_name"]
         self.twitch_bot_refresh_token = settingDict["twitch_bot_refresh_token"]
         self.twitch_channel_name = settingDict["twitch_channel_name"]
+        self.twitch_gambling_webhook = settingDict["twitch_gambling_webhook"]
         return self
 
     async def on_prediction_event(self, uuid: UUID, data: dict):
@@ -48,8 +49,7 @@ class TwitchBot(commands.Cog):
 
         # Helper function to send the webhook message
         def send_webhook(embed, message):
-            ##### ADD TO DATABASE #####
-            webhook = SyncWebhook.from_url('https://discord.com/api/webhooks/1153761373923315783/PmpyjoH58xx9N2SvpH6BYrxqVh1844FhJcFahUaqlGGq15RY35HfyI8iHWpu-SPPWdKc')
+            webhook = SyncWebhook.from_url(self.twitch_gambling_webhook)
             thread = PlaceholderThread(1070317311505997864)
             webhook.send(message, embed=embed, thread=thread)
 
