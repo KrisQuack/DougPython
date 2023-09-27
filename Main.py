@@ -30,7 +30,6 @@ class Client(commands.Bot):
             synced = await self.tree.sync()
             logging.info(f'Command tree synced: {len(synced)}')
             await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
-            await self.settings.log_channel.send(f"<@130062174918934528> Bot is online!")
         logging.info(f'Guild available: {guild.name} ({guild.id})')
 
     async def on_interaction(self, interaction: discord.Interaction):

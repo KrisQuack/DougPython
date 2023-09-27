@@ -19,7 +19,7 @@ class Move(commands.Cog):
         channel="The channel to move the message to"
     )
     async def move(self, interaction: discord.Interaction, message_id: str, channel: discord.TextChannel|discord.Thread):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         thread = None  # Initialize thread to None
         # Identify if it's a thread
         if isinstance(channel, discord.Thread):
@@ -59,9 +59,10 @@ class Move(commands.Cog):
                 await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds, thread=thread)
             else:
                 await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds)
-
+        
+        await message_to_move.reply(f"{author.mention} your message has been moved to {channel.mention}")
         await message_to_move.delete()
-        await interaction.followup.send(f"{author.mention} your message has been moved to {channel.mention}")
+        await interaction.followup.send("Message moved")
 
 
 async def setup(self: commands.Bot) -> None:

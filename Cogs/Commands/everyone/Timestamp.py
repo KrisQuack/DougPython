@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 from typing import List
 
 import discord
@@ -88,13 +89,17 @@ class Timestamp(commands.Cog):
     ) -> List[app_commands.Choice[str]]:
         return [app_commands.Choice(name=datetime.utcnow().strftime('%H:%M'), value=datetime.utcnow().strftime('%H:%M'))]
     
-    @tasks.loop(seconds=10)
+    @tasks.loop(minutes=1)
     async def update_time(self):
-        # get current time in America/Los_Angeles in the format 6pm
-        time = datetime.now(pytz.timezone('America/Los_Angeles')).strftime('%I:%M%p')
-        # set channel name to current time
-        channel: CategoryChannel = await self.client.get_channel(567147619122544641)
-        await channel.edit(name=f'PEPPER TIME: {time}')
+        # get current time in America/Los_Angeles
+        current_time = datetime.now(pytz.timezone('America/Los_Angeles'))
+        time = current_time.strftime('%I:%M %p')
+        # Check if it's a 10 minute interval
+        if current_time.minute % 10 == 0:
+            # set channel name to current time
+            channel: CategoryChannel = self.client.get_channel(567147619122544641)
+            await channel.edit(name=f'PEPPER TIME: {time}')
+
 
     @update_time.before_loop
     async def before_update_time(self):
