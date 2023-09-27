@@ -125,6 +125,7 @@ class TwitchBot:
             if dbUser:
                 # Post embed for redemption
                 embed = Embed(title=f"Minecraft Redemption: {msg.user.display_name}", color=Color.orange())
+                embed.set_footer(text="Please ensure the user has redeemed on twitch and approve in the redemption queue once complete")
                 embed.add_field(name="Twitch Username", value=msg.user.display_name, inline=True)
                 embed.add_field(name="Discord ID", value=dbUserID, inline=True)
                 embed.add_field(name="Discord Mention", value=f"<@{dbUserID}>", inline=True)

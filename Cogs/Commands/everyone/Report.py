@@ -20,6 +20,7 @@ class Report(commands.GroupCog, name="report", description="Report a user or mes
         self.client.tree.add_command(self.report_message)
         
     @app_commands.command(name="user", description="Report a user")
+    @app_commands.guild_only()
     async def report_user_command(self, interaction: discord.Interaction, user: discord.Member):
         await interaction.response.send_modal(ReportModal(self.client, user=user))
 

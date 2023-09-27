@@ -3,14 +3,15 @@ from typing import List
 
 import discord
 import pytz
-from discord import app_commands
-from discord.ext import commands
+from discord import app_commands, CategoryChannel
+from discord.ext import commands, tasks
 
 
 class Timestamp(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
         self.date = '04/Jul/2000'
+        self.update_time.start()
 
     @app_commands.command(name="timestamp", description="Convert a date and time to a Discord timestamp")
     @app_commands.guild_only()
@@ -86,6 +87,18 @@ class Timestamp(commands.Cog):
             current: str,
     ) -> List[app_commands.Choice[str]]:
         return [app_commands.Choice(name=datetime.utcnow().strftime('%H:%M'), value=datetime.utcnow().strftime('%H:%M'))]
+    
+    @tasks.loop(seconds=10)
+    async def update_time(self):
+        # get current time in America/Los_Angeles in the format 6pm
+        time = datetime.now(pytz.timezone('America/Los_Angeles')).strftime('%I:%M%p')
+        # set channel name to current time
+        channel: CategoryChannel = await self.client.get_channel(567147619122544641)
+        await channel.edit(name=f'PEPPER TIME: {time}')
+
+    @update_time.before_loop
+    async def before_update_time(self):
+        await self.client.wait_until_ready()
 
 
 async def setup(self: commands.Bot) -> None:
