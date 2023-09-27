@@ -3,21 +3,25 @@ from discord import app_commands, ui, Embed
 from discord.ext import commands
 
 
-class Report(commands.Cog):
+class Report(commands.GroupCog, name="report", description="Report a user or message"):
     def __init__(self, client: commands.Bot):
         self.client = client
         self.report_user = app_commands.ContextMenu(
-            name='Report User',
+            name='Report: User',
             callback=self.report_user,
         )
         self.report_user.guild_only = True
         self.report_message = app_commands.ContextMenu(
-            name='Report Message',
+            name='Report: Message',
             callback=self.report_message,
         )
         self.report_message.guild_only = True
         self.client.tree.add_command(self.report_user)
         self.client.tree.add_command(self.report_message)
+        
+    @app_commands.command(name="user", description="Report a user")
+    async def report_user_command(self, interaction: discord.Interaction, user: discord.Member):
+        await interaction.response.send_modal(ReportModal(self.client, user=user))
 
     async def report_user(self, interaction: discord.Interaction, user: discord.Member):
         await interaction.response.send_modal(ReportModal(self.client, user=user))

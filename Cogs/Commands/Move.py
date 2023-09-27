@@ -1,5 +1,6 @@
 import asyncio
 
+import io
 import aiohttp
 import discord
 from discord import app_commands
@@ -19,6 +20,7 @@ class Move(commands.Cog):
     )
     async def move(self, interaction: discord.Interaction, message_id: str, channel: discord.TextChannel|discord.Thread):
         await interaction.response.defer()
+        thread = None  # Initialize thread to None
         # Identify if it's a thread
         if isinstance(channel, discord.Thread):
             thread = channel
@@ -49,9 +51,9 @@ class Move(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 tasks = [fetch_attachment(session, at.url) for at in message_to_move.attachments]
                 attachments = await asyncio.gather(*tasks)
-                files = [discord.File(a[0], filename=a[1]) for a in attachments]
+                files = [discord.File(io.BytesIO(a[0]), filename=a[1]) for a in attachments]  # Use BytesIO here
                 await webhook.send(content=content, username=username, avatar_url=avatar_url,
-                                   embeds=message_to_move.embeds, files=files)
+                                embeds=message_to_move.embeds, files=files)
         else:
             if thread:
                 await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds, thread=thread)

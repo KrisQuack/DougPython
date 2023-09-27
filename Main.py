@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from Database.DatabaseConfig import DatabaseConfig
 from Database.BotSettings import BotSettings
-from Database.DiscordMember import DiscordMember
+from Twitch import TwitchBot
 
 
 class Client(commands.Bot):
@@ -22,32 +22,37 @@ class Client(commands.Bot):
 
     async def on_guild_available(self, guild: discord.Guild):
         if self.first_run:
+            self.first_run = False
             self.database = DatabaseConfig()
             self.settings = BotSettings(self.database)
             await self.settings.get_settings(self)
             await self.register_cogs()
             synced = await self.tree.sync()
             logging.info(f'Command tree synced: {len(synced)}')
-            self.first_run = False
+            await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
+            await self.settings.log_channel.send(f"<@130062174918934528> Bot is online!")
         logging.info(f'Guild available: {guild.name} ({guild.id})')
 
     async def on_interaction(self, interaction: discord.Interaction):
+        if interaction.command_failed:
+            await interaction.response.send_message("Command failed: You may not have the required access", ephemeral=True)
         if interaction.type == discord.InteractionType.application_command:
-            embed = Embed(title=f"Command Used: {interaction.data['name']}", color=Color.green())
+            embed = None
+            if interaction.command_failed:
+                embed = Embed(title=f"Command Failed: {interaction.data['name']}", color=Color.red())
+            else:
+                embed = Embed(title=f"Command Used: {interaction.data['name']}", color=Color.green())
             embed.add_field(name="Used by", value=f"{interaction.user.name} ({interaction.user.id})", inline=False)
             embed.add_field(name="Used In", value=f"{interaction.channel.name} ({interaction.channel.id})",
                             inline=False)
             if interaction.data.get('options') is not None:
                 options_str = "\n".join(
-                    [f"{option['name']}: {option['value']}" for option in interaction.data['options']])
+                    [f"{option['name']}: {option.get('value', 'N/A')}" for option in interaction.data['options']])
                 embed.add_field(name="Command Options", value=options_str, inline=False)
             embed.set_author(name=f"{interaction.user.name} ({interaction.user.id})",
                              icon_url=interaction.user.display_avatar.url)
             # Send to log channel
             await self.settings.log_channel.send(embed=embed)
-
-        if interaction.command_failed:
-            logging.error('Interaction: ' + interaction.command_failed)
 
     async def register_cogs(self):
         # Automatically load cogs from the 'Cogs/Commands/' folder
@@ -58,7 +63,8 @@ class Client(commands.Bot):
         for filename in os.listdir('./Cogs/Systems'):
             if filename.endswith('.py'):
                 await self.load_extension(f'Cogs.Systems.{filename[:-3]}')
-        # Complete
+        # Start the Twitch bot
+        await TwitchBot().run()
         logging.info('Cogs loaded')
 
 discord.utils.setup_logging(level=logging.WARNING)

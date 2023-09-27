@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import logging
 
-from discord import Embed, Color
+from discord import Embed, Color, Guild, Message
 from discord.ext import commands
 from discord import SyncWebhook
 from twitchAPI import Twitch
@@ -12,29 +12,22 @@ from twitchAPI.types import AuthScope, ChatEvent
 from twitchAPI.pubsub import PubSub
 from uuid import UUID
 
+from Database.User import User
+from Database.DatabaseConfig import DatabaseConfig
+from Database.BotSettings import BotSettings
+
 class PlaceholderThread:
     def __init__(self, id):
         self.id = id
 
 
-class TwitchBot(commands.Cog):
-    def __init__(self, client: commands.Bot):
-        self.client = client
+class TwitchBot:
+    def __init__(self):
         self.BOT_TARGET_SCOPES = [AuthScope.CHAT_READ, AuthScope.CHAT_EDIT, AuthScope.MODERATION_READ]
         self.twitch_bot = None
         self.channel_user = None
         self.bot_user = None
         self.chat = None
-
-    async def initialize_async(self):
-        settingDict = self.client.settings.dict
-        self.twitch_client_id = settingDict["twitch_client_id"]
-        self.twitch_client_secret = settingDict["twitch_client_secret"]
-        self.twitch_bot_name = settingDict["twitch_bot_name"]
-        self.twitch_bot_refresh_token = settingDict["twitch_bot_refresh_token"]
-        self.twitch_channel_name = settingDict["twitch_channel_name"]
-        self.twitch_gambling_webhook = settingDict["twitch_gambling_webhook"]
-        return self
 
     async def on_prediction_event(self, uuid: UUID, data: dict):
         # Extracting event type and prediction data
@@ -126,12 +119,39 @@ class TwitchBot(commands.Cog):
     async def on_chat_message(self, msg: ChatMessage):
         if msg.text == "wah, you up?" and msg.user.mod:
             await msg.reply("Let me sleep")
-        ##### I will need to process Minecrat requests here #####
+        if msg.text.startswith('DMC-'):
+            dbUser = await User(DatabaseConfig()).get_user_by_key('minecraft_code', msg.text)
+            dbUserID = dbUser.dict['id']
+            if dbUser:
+                # Post embed for redemption
+                embed = Embed(title=f"Minecraft Redemption: {msg.user.display_name}", color=Color.orange())
+                embed.add_field(name="Twitch Username", value=msg.user.display_name, inline=True)
+                embed.add_field(name="Discord ID", value=dbUserID, inline=True)
+                embed.add_field(name="Discord Mention", value=f"<@{dbUserID}>", inline=True)
+                # respond to the user
+                await msg.reply(f"Successfully redeemed, please wait for a mod to check your info")
+                # Send the embed to the mod channel via webhook
+                webhook = SyncWebhook.from_url(self.twitch_mod_webhook)
+                webhook.send(embed=embed)
+                # Remove the code from the database
+                await dbUser.upsert_user(None, 'minecraft_code', None)
+            else:
+                await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
-    async def run_twitch_bot(self):
+    async def run(self):
+        self.settings = BotSettings(DatabaseConfig())
+        await self.settings.get_settings()
+        settingDict = self.settings.dict
+        self.twitch_client_id = settingDict["twitch_client_id"]
+        self.twitch_client_secret = settingDict["twitch_client_secret"]
+        self.twitch_bot_name = settingDict["twitch_bot_name"]
+        self.twitch_bot_refresh_token = settingDict["twitch_bot_refresh_token"]
+        self.twitch_channel_name = settingDict["twitch_channel_name"]
+        self.twitch_gambling_webhook = settingDict["twitch_gambling_webhook"]
+        self.twitch_mod_webhook = settingDict["twitch_mod_webhook"]
         # Set up the Twitch instance for the bot
         self.twitch_bot = await Twitch(self.twitch_client_id,
-                                       self.twitch_client_secret)
+                                    self.twitch_client_secret)
         self.bot_user = await first(self.twitch_bot.get_users(logins=[self.twitch_bot_name]))
         self.channel_user = await first(
             self.twitch_bot.get_users(logins=self.twitch_channel_name))
@@ -139,7 +159,7 @@ class TwitchBot(commands.Cog):
                                                 self.twitch_client_id,
                                                 self.twitch_client_secret)
         await self.twitch_bot.set_user_authentication(bot_tokens[0], self.BOT_TARGET_SCOPES,
-                                                      refresh_token=bot_tokens[1])
+                                                    refresh_token=bot_tokens[1])
         logging.info(f'Twitch Bot ID: {self.bot_user.id}')
         # Set up the pubsub
         pubsub = PubSub(self.twitch_bot)
@@ -153,9 +173,3 @@ class TwitchBot(commands.Cog):
         self.chat.register_event(ChatEvent.MESSAGE, self.on_chat_message)
         self.chat.start()
         logging.info('Twitch Chat listening')
-
-
-async def setup(bot):
-    bot_cog = await TwitchBot(bot).initialize_async()
-    bot.loop.create_task(bot_cog.run_twitch_bot())
-    await bot.add_cog(bot_cog)

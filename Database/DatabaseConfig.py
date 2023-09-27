@@ -7,5 +7,4 @@ class DatabaseConfig:
         self.client = CosmosClient.from_connection_string(connection_string)
         self.database = self.client.get_database_client('DougBot')
         self.BotSettings = self.database.get_container_client('BotSettings')
-        self.DiscordMember = self.database.get_container_client('DiscordMember')
-        self.DiscordMessage = self.database.get_container_client('DiscordMessage')
+        self.Users = self.database.get_container_client('Users')

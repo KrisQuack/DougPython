@@ -13,7 +13,6 @@ class Timestamp(commands.Cog):
         self.date = '04/Jul/2000'
 
     @app_commands.command(name="timestamp", description="Convert a date and time to a Discord timestamp")
-    @app_commands.checks.has_permissions(moderate_members=True)
     @app_commands.guild_only()
     @app_commands.describe(
         date="The date to convert to a timestamp. Format: `04/Jul/2000`",

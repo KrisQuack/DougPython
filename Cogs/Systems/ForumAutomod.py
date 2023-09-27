@@ -16,7 +16,7 @@ class ThreadWelcomeCog(commands.Cog):
         embed = discord.Embed(
             title="Welcome to Your Thread!",
             description=(
-                "Server rules apply. Issues? Contact [mod team](https://discord.com/channels/567141138021089308/880127379119415306/1132052471481638932).\n"
+                "Server rules apply. Issues? Contact [mod team](https://discord.com/channels/567141138021089308/880127379119415306/1154847821514670160).\n"
                 f"<@{thread.owner_id}>: You can Pin/Unpin posts. [How?](https://cdn.discordapp.com/attachments/886548334154760242/1135511848817545236/image.png)"
             ),
             color=discord.Color.orange()
