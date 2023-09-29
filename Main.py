@@ -54,15 +54,15 @@ class Client(commands.Bot):
             await self.settings.log_channel.send(embed=embed)
 
     async def register_cogs(self):
-    # Automatically load cogs from the 'Cogs/' folder and its subfolders
+        # Start the Twitch bot
+        await TwitchBot().run()
+        # Automatically load cogs from the 'Cogs/' folder and its subfolders
         for dirpath, dirnames, filenames in os.walk('./Cogs'):
             for filename in filenames:
                 if filename.endswith('.py'):
                     # Construct the extension name by converting file path to Python's dot notation
                     extension = dirpath.replace('./', '').replace('/', '.') + '.' + filename[:-3]
                     await self.load_extension(extension)
-        # Start the Twitch bot
-        await TwitchBot().run()
         logging.info('Cogs loaded')
 
 discord.utils.setup_logging(level=logging.WARNING)

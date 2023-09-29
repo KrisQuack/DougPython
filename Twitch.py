@@ -120,23 +120,26 @@ class TwitchBot:
         if msg.text == "wah, you up?" and msg.user.mod:
             await msg.reply("Let me sleep")
         if msg.text.startswith('DMC-'):
-            dbUser = await User(DatabaseConfig()).get_user_by_key('minecraft_code', msg.text)
-            dbUserID = dbUser.dict['id']
-            if dbUser:
-                # Post embed for redemption
-                embed = Embed(title=f"Minecraft Redemption: {msg.user.display_name}", color=Color.orange())
-                embed.set_footer(text="Please ensure the user has redeemed on twitch and approve in the redemption queue once complete")
-                embed.add_field(name="Twitch Username", value=msg.user.display_name, inline=True)
-                embed.add_field(name="Discord ID", value=dbUserID, inline=True)
-                embed.add_field(name="Discord Mention", value=f"<@{dbUserID}>", inline=True)
-                # respond to the user
-                await msg.reply(f"Successfully redeemed, please wait for a mod to check your info")
-                # Send the embed to the mod channel via webhook
-                webhook = SyncWebhook.from_url(self.twitch_mod_webhook)
-                webhook.send(embed=embed)
-                # Remove the code from the database
-                await dbUser.upsert_user(None, 'minecraft_code', None)
-            else:
+            try:
+                dbUser = await User(DatabaseConfig()).get_user_by_key('mc_redeem', msg.text)
+                dbUserID = dbUser.dict['id']
+                if dbUser:
+                    # Post embed for redemption
+                    embed = Embed(title=f"Minecraft Redemption: {msg.user.display_name}", color=Color.orange())
+                    embed.set_footer(text="Please ensure the user has redeemed on twitch and approve in the redemption queue once complete")
+                    embed.add_field(name="Twitch Username", value=msg.user.display_name, inline=True)
+                    embed.add_field(name="Discord ID", value=dbUserID, inline=True)
+                    embed.add_field(name="Discord Mention", value=f"<@{dbUserID}>", inline=True)
+                    # respond to the user
+                    await msg.reply(f"Successfully redeemed, please wait for a mod to check your info")
+                    # Send the embed to the mod channel via webhook
+                    webhook = SyncWebhook.from_url(self.twitch_mod_webhook)
+                    webhook.send(embed=embed)
+                    # Remove the code from the database
+                    await dbUser.upsert_user(None, 'mc_redeem', None)
+                else:
+                    raise Exception("Invalid code")
+            except:
                 await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
     async def run(self):

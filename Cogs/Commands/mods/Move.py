@@ -60,7 +60,7 @@ class Move(commands.Cog):
             else:
                 await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds)
         
-        await message_to_move.reply(f"{author.mention} your message has been moved to {channel.mention}")
+        await message_to_move.reply(f"Your message has been moved to {channel.mention}")
         await message_to_move.delete()
         await interaction.followup.send("Message moved")
 
