@@ -55,7 +55,7 @@ class Client(commands.Bot):
 
     async def register_cogs(self):
         # Start the Twitch bot
-        await TwitchBot().run()
+        await TwitchBot(self).run()
         # Automatically load cogs from the 'Cogs/' folder and its subfolders
         for dirpath, dirnames, filenames in os.walk('./Cogs'):
             for filename in filenames:

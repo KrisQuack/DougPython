@@ -20,6 +20,8 @@ class BotSettings:
         mod_role_id = int(result['mod_role_id'])
         reaction_filter_channels = [int(channel_id) for channel_id in result['reaction_filter_channels']]
         report_channel_id = int(result['report_channel_id'])
+        twitch_gambling_channel_id = int(result['twitch_gambling_channel_id'])
+        twitch_mod_channel_id = int(result['twitch_mod_channel_id'])
         # Set attributes
         self.dm_receipt_channel = client.get_channel(dm_receipt_channel_id)
         self.guild = client.get_guild(guild_id)
@@ -28,6 +30,8 @@ class BotSettings:
         self.mod_role = self.guild.get_role(mod_role_id)
         self.reaction_filter_channels = [client.get_channel(channel_id) for channel_id in reaction_filter_channels]
         self.report_channel = client.get_channel(report_channel_id)
+        self.twitch_gambling_channel = client.get_channel(twitch_gambling_channel_id)
+        self.twitch_mod_channel = client.get_channel(twitch_mod_channel_id)
         # Print if any are None
         if self.dm_receipt_channel is None or self.guild is None or self.log_channel is None or self.mod_role is None or self.report_channel is None or len(self.log_blacklist_channels) != len(log_blacklist_channels) or len(self.reaction_filter_channels) != len(reaction_filter_channels):
           logging.error("BotSettings failed to load some discord attributes")

@@ -3,18 +3,15 @@ import logging
 
 from discord import Embed, Color, Guild, Message
 from discord.ext import commands
-from discord import SyncWebhook
-from twitchAPI import Twitch
+from twitchAPI.twitch import Twitch
 from twitchAPI.chat import Chat, EventData, ChatMessage
 from twitchAPI.helper import first
 from twitchAPI.oauth import refresh_access_token
-from twitchAPI.types import AuthScope, ChatEvent
+from twitchAPI.type import AuthScope, ChatEvent
 from twitchAPI.pubsub import PubSub
 from uuid import UUID
 
 from Database.User import User
-from Database.DatabaseConfig import DatabaseConfig
-from Database.BotSettings import BotSettings
 
 class PlaceholderThread:
     def __init__(self, id):
@@ -22,7 +19,8 @@ class PlaceholderThread:
 
 
 class TwitchBot:
-    def __init__(self):
+    def __init__(self, discordBot: commands.Bot):
+        self.discordBot = discordBot
         self.BOT_TARGET_SCOPES = [AuthScope.CHAT_READ, AuthScope.CHAT_EDIT, AuthScope.MODERATION_READ]
         self.twitch_bot = None
         self.channel_user = None
@@ -39,12 +37,6 @@ class TwitchBot:
         # Helper function to create an embed with a given title and color
         def create_embed(title, color=Color.green()):
             return Embed(title=title, color=color)
-
-        # Helper function to send the webhook message
-        def send_webhook(embed, message):
-            webhook = SyncWebhook.from_url(self.twitch_gambling_webhook)
-            thread = PlaceholderThread(1070317311505997864)
-            webhook.send(message, embed=embed, thread=thread)
 
         # Helper function to format the ISO string
         def format_iso_str(iso_str):
@@ -105,7 +97,7 @@ class TwitchBot:
 
         # If an embed was created, send it via webhook
         if embed:
-            send_webhook(embed, embedMessage)
+            self.discordBot.settngs.twitch_gambling_channel.send(embedMessage,embed=embed)
 
 
 
@@ -121,7 +113,7 @@ class TwitchBot:
             await msg.reply("Let me sleep")
         if msg.text.startswith('DMC-'):
             try:
-                dbUser = await User(DatabaseConfig()).get_user_by_key('mc_redeem', msg.text)
+                dbUser = await User(self.discordBot.database).get_user_by_key('mc_redeem', msg.text)
                 dbUserID = dbUser.dict['id']
                 if dbUser:
                     # Post embed for redemption
@@ -130,11 +122,10 @@ class TwitchBot:
                     embed.add_field(name="Twitch Username", value=msg.user.display_name, inline=True)
                     embed.add_field(name="Discord ID", value=dbUserID, inline=True)
                     embed.add_field(name="Discord Mention", value=f"<@{dbUserID}>", inline=True)
+                    # Send the embed to the mod channel
+                    await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
                     # respond to the user
                     await msg.reply(f"Successfully redeemed, please wait for a mod to check your info")
-                    # Send the embed to the mod channel via webhook
-                    webhook = SyncWebhook.from_url(self.twitch_mod_webhook)
-                    webhook.send(embed=embed)
                     # Remove the code from the database
                     await dbUser.upsert_user(None, 'mc_redeem', None)
                 else:
@@ -143,9 +134,7 @@ class TwitchBot:
                 await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
     async def run(self):
-        self.settings = BotSettings(DatabaseConfig())
-        await self.settings.get_settings()
-        settingDict = self.settings.dict
+        settingDict = self.discordBot.settings.dict
         self.twitch_client_id = settingDict["twitch_client_id"]
         self.twitch_client_secret = settingDict["twitch_client_secret"]
         self.twitch_bot_name = settingDict["twitch_bot_name"]
@@ -166,14 +155,15 @@ class TwitchBot:
                                                     refresh_token=bot_tokens[1])
         logging.info(f'Twitch Bot ID: {self.bot_user.id}')
         # Set up the pubsub
-        pubsub = PubSub(self.twitch_bot)
+        pubsub = PubSub(self.twitch_bot, self.discordBot.loop)
         pubsub.start()
         # you can either start listening before or after you started pubsub.
         await pubsub.listen_undocumented_topic(f"predictions-channel-v1.{self.channel_user.id}", self.on_prediction_event)
         # Set up the chat
-        self.chat = await Chat(self.twitch_bot)
+        self.chat = await Chat(self.twitch_bot,callback_loop=self.discordBot.loop)
         self.chat.register_event(ChatEvent.READY, self.on_chat_ready)
         self.chat.register_event(ChatEvent.JOINED, self.on_chat_joined)
         self.chat.register_event(ChatEvent.MESSAGE, self.on_chat_message)
+        self.chat.register_event(ChatEvent.LEFT, self.on_chat_ready)
         self.chat.start()
         logging.info('Twitch Chat listening')
