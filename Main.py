@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import discord
 from discord import Embed, Color
@@ -66,5 +67,6 @@ class Client(commands.Bot):
         logging.info('Cogs loaded')
 
 discord.utils.setup_logging(level=logging.WARNING)
+logging.warning(f'Python version: {sys.version}')
 client = Client()
 client.run(os.environ.get('TOKEN'), log_handler=None)

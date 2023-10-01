@@ -140,8 +140,6 @@ class TwitchBot:
         self.twitch_bot_name = settingDict["twitch_bot_name"]
         self.twitch_bot_refresh_token = settingDict["twitch_bot_refresh_token"]
         self.twitch_channel_name = settingDict["twitch_channel_name"]
-        self.twitch_gambling_webhook = settingDict["twitch_gambling_webhook"]
-        self.twitch_mod_webhook = settingDict["twitch_mod_webhook"]
         # Set up the Twitch instance for the bot
         self.twitch_bot = await Twitch(self.twitch_client_id,
                                     self.twitch_client_secret)
