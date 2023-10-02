@@ -34,8 +34,7 @@ class BotSettings:
         self.twitch_mod_channel = client.get_channel(twitch_mod_channel_id)
         # Print if any are None
         if self.dm_receipt_channel is None or self.guild is None or self.log_channel is None or self.mod_role is None or self.report_channel is None or len(self.log_blacklist_channels) != len(log_blacklist_channels) or len(self.reaction_filter_channels) != len(reaction_filter_channels):
-          logging.error("BotSettings failed to load some discord attributes")
+          logging.getLogger("BotSettings").error("BotSettings failed to load some discord attributes")
     
     async def update_settings(self):
         await self.container.upsert_item(self.dict)
-        logging.info(f"Updated BotSettings")

@@ -102,11 +102,11 @@ class TwitchBot:
 
 
     async def on_chat_ready(self, data: EventData):
-        logging.info('Chat is ready for work, joining channels')
+        logging.getLogger("Twitch").info('Chat is ready for work, joining channels')
         await data.chat.join_room(self.twitch_channel_name)
 
     async def on_chat_joined(self, data: EventData): 
-        logging.info(f"User {data.user_name} joined the chat {data.room_name}")
+        logging.getLogger("Twitch").info(f"User {data.user_name} joined the chat {data.room_name}")
 
     async def on_chat_message(self, msg: ChatMessage):
         if msg.text == "wah, you up?" and msg.user.mod:
@@ -151,12 +151,13 @@ class TwitchBot:
                                                 self.twitch_client_secret)
         await self.twitch_bot.set_user_authentication(bot_tokens[0], self.BOT_TARGET_SCOPES,
                                                     refresh_token=bot_tokens[1])
-        logging.info(f'Twitch Bot ID: {self.bot_user.id}')
+        logging.getLogger("Twitch").info(f'Twitch Bot ID: {self.bot_user.id}')
         # Set up the pubsub
         pubsub = PubSub(self.twitch_bot, self.discordBot.loop)
         pubsub.start()
         # you can either start listening before or after you started pubsub.
         await pubsub.listen_undocumented_topic(f"predictions-channel-v1.{self.channel_user.id}", self.on_prediction_event)
+        logging.getLogger("Twitch").info('Twitch PubSub listening')
         # Set up the chat
         self.chat = await Chat(self.twitch_bot,callback_loop=self.discordBot.loop)
         self.chat.register_event(ChatEvent.READY, self.on_chat_ready)
@@ -164,4 +165,4 @@ class TwitchBot:
         self.chat.register_event(ChatEvent.MESSAGE, self.on_chat_message)
         self.chat.register_event(ChatEvent.LEFT, self.on_chat_ready)
         self.chat.start()
-        logging.info('Twitch Chat listening')
+        logging.getLogger("Twitch").info('Twitch Chat listening')

@@ -9,17 +9,17 @@ from discord.ext import commands
 from Database.DatabaseConfig import DatabaseConfig
 from Database.BotSettings import BotSettings
 from Twitch import TwitchBot
+from LoggerHandler import LoggerHandler 
 
 
 class Client(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('✵'), intents=discord.Intents.all(),
-                         help_command=None)
+        super().__init__(command_prefix=commands.when_mentioned_or('✵'), intents=discord.Intents.all(), help_command=None)
         # Define first run
         self.first_run = True
 
     async def on_ready(self):
-        logging.info(f'Logged on as {self.user}!')
+        logging.getLogger("Main").info(f'Logged on as {self.user}!')
 
     async def on_guild_available(self, guild: discord.Guild):
         if self.first_run:
@@ -29,9 +29,9 @@ class Client(commands.Bot):
             await self.settings.get_settings(self)
             await self.register_cogs()
             synced = await self.tree.sync()
-            logging.info(f'Command tree synced: {len(synced)}')
+            logging.getLogger("Main").info(f'Command tree synced: {len(synced)}')
             await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
-        logging.info(f'Guild available: {guild.name} ({guild.id})')
+        logging.getLogger("Main").info(f'Guild available: {guild.name} ({guild.id})')
 
     async def on_interaction(self, interaction: discord.Interaction):
         if interaction.command_failed:
@@ -58,15 +58,26 @@ class Client(commands.Bot):
         # Start the Twitch bot
         await TwitchBot(self).run()
         # Automatically load cogs from the 'Cogs/' folder and its subfolders
+        loadedCogs = []
+        failedCogs = []
         for dirpath, dirnames, filenames in os.walk('./Cogs'):
             for filename in filenames:
                 if filename.endswith('.py'):
                     # Construct the extension name by converting file path to Python's dot notation
-                    extension = dirpath.replace('./', '').replace('/', '.') + '.' + filename[:-3]
-                    await self.load_extension(extension)
-        logging.info('Cogs loaded')
+                    try:
+                        extension = dirpath.replace('./', '').replace('/', '.') + '.' + filename[:-3]
+                        await self.load_extension(extension)
+                        loadedCogs.append(extension)
+                    except Exception as e:
+                        failedCogs.append(extension)
+        logging.getLogger("Cogs").info(f'Loaded ({len(loadedCogs)}): {", ".join(loadedCogs)}')
+        logging.getLogger("Cogs").info(f'Failed ({len(failedCogs)}): {", ".join(failedCogs)}')
 
-discord.utils.setup_logging(level=logging.WARNING)
-logging.warning(f'Python version: {sys.version}')
+# Create the logger
+logger = LoggerHandler(os.environ.get('LOGGER_WEBHOOK'))
+discord.utils.setup_logging(level=logging.INFO,handler=logger)
+# Log Python version
+logging.info(f'Python version: {sys.version}')
+# Start the client
 client = Client()
 client.run(os.environ.get('TOKEN'), log_handler=None)

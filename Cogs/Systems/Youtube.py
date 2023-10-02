@@ -64,7 +64,7 @@ class CheckYoutube(commands.Cog):
                         # Update the last video ID
                         youtube_config['last_video_id'] = video_id
             except Exception as e:
-                logging.error(f"YoutubeChannel: {youtube_config['id']} {e}")
+                logging.getLogger("YoutubeChannel").error(f"{youtube_config['id']}\n\n{e}")
 
         await self.client.settings.update_settings()
 
