@@ -1,10 +1,12 @@
 import logging
 import os
 import sys
+import traceback
 
 import discord
-from discord import Embed, Color
+from discord import Embed, Color, app_commands
 from discord.ext import commands
+from discord.app_commands import AppCommandError
 
 from Database.DatabaseConfig import DatabaseConfig
 from Database.BotSettings import BotSettings
@@ -28,31 +30,39 @@ class Client(commands.Bot):
             self.settings = BotSettings(self.database)
             await self.settings.get_settings(self)
             await self.register_cogs()
+            self.tree.on_error = self.on_interaction_fail
             synced = await self.tree.sync()
             logging.getLogger("Main").info(f'Command tree synced: {len(synced)}')
             await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
         logging.getLogger("Main").info(f'Guild available: {guild.name} ({guild.id})')
 
+    async def send_interaction_embed(self, interaction: discord.Interaction, title: str, color: Color, error: AppCommandError = None):
+        embed = Embed(title=title, color=color)
+        embed.add_field(name="Used by", value=f"{interaction.user.name} ({interaction.user.id})", inline=False)
+        embed.add_field(name="Used In", value=f"{interaction.channel.name} ({interaction.channel.id})", inline=False)
+
+        if interaction.data.get('options') is not None:
+            options_str = "\n".join([f"{option['name']}: {option.get('value', 'N/A')}" for option in interaction.data['options']])
+            embed.add_field(name="Command Options", value=options_str, inline=False)
+
+        if error:
+            embed.add_field(name="Error", value=error, inline=False)
+
+        embed.set_author(name=f"{interaction.user.name} ({interaction.user.id})", icon_url=interaction.user.display_avatar.url)
+        return embed
+
     async def on_interaction(self, interaction: discord.Interaction):
-        if interaction.command_failed:
-            await interaction.response.send_message("Command failed: You may not have the required access", ephemeral=True)
-        if interaction.type == discord.InteractionType.application_command:
-            embed = None
-            if interaction.command_failed:
-                embed = Embed(title=f"Command Failed: {interaction.data['name']}", color=Color.red())
-            else:
-                embed = Embed(title=f"Command Used: {interaction.data['name']}", color=Color.green())
-            embed.add_field(name="Used by", value=f"{interaction.user.name} ({interaction.user.id})", inline=False)
-            embed.add_field(name="Used In", value=f"{interaction.channel.name} ({interaction.channel.id})",
-                            inline=False)
-            if interaction.data.get('options') is not None:
-                options_str = "\n".join(
-                    [f"{option['name']}: {option.get('value', 'N/A')}" for option in interaction.data['options']])
-                embed.add_field(name="Command Options", value=options_str, inline=False)
-            embed.set_author(name=f"{interaction.user.name} ({interaction.user.id})",
-                             icon_url=interaction.user.display_avatar.url)
-            # Send to log channel
+        if interaction.type == discord.InteractionType.application_command and not interaction.command_failed:
+            embed = await self.send_interaction_embed(interaction, f"Command Used: {interaction.data['name']}", Color.green())
             await self.settings.log_channel.send(embed=embed)
+
+    async def on_interaction_fail(self, interaction: discord.Interaction, error: AppCommandError):
+        await interaction.response.send_message(error, ephemeral=True)
+        embed = await self.send_interaction_embed(interaction, f"Command Failed: {interaction.data['name']}", Color.red(), error)
+        await self.settings.log_channel.send(embed=embed)
+        formatted_traceback = traceback.format_exception(type(error), error, error.__traceback__)
+        logging.getLogger("App_Command").error(f'Command {interaction.data["name"]} failed: {error}\n\n{formatted_traceback}')
+
 
     async def register_cogs(self):
         # Start the Twitch bot

@@ -1,11 +1,13 @@
 from datetime import datetime
 import time
 from typing import List
+import logging
 
 import discord
 import pytz
 from discord import app_commands, CategoryChannel
 from discord.ext import commands, tasks
+
 
 
 class Timestamp(commands.Cog):
@@ -22,21 +24,11 @@ class Timestamp(commands.Cog):
         timezone="The time zone to use. Format: `America/Los_Angeles"
     )
     async def timestamp(self, interaction: discord.Interaction, date: str, time: str, timezone: str):
-        # Check if the time zone is valid
-        if timezone not in pytz.all_timezones:
-            await interaction.response.send_message("Invalid time zone.", ephemeral=True)
-            return
-
         # Create a date string using the provided date and time
         date_string = f"{date} {time}"
 
         # Convert to datetime object
-        try:
-            parsed_time = datetime.strptime(date_string, '%d/%b/%Y %H:%M')
-        except ValueError:
-            await interaction.response.send_message(
-                "Invalid date or time format. Please use `04/Jul/2000` for date and `HH:MM` for time.", ephemeral=True)
-            return
+        parsed_time = datetime.strptime(date_string, '%d/%b/%Y %H:%M')
 
         # Apply the time zone
         tz = pytz.timezone(timezone)
@@ -91,14 +83,17 @@ class Timestamp(commands.Cog):
     
     @tasks.loop(minutes=1)
     async def update_time(self):
-        # get current time in America/Los_Angeles
-        current_time = datetime.now(pytz.timezone('America/Los_Angeles'))
-        time = current_time.strftime('%I:%M %p')
-        # Check if it's a 10 minute interval
-        if current_time.minute % 10 == 0:
-            # set channel name to current time
-            channel: CategoryChannel = self.client.get_channel(567147619122544641)
-            await channel.edit(name=f'PEPPER TIME: {time}')
+        try:
+            # get current time in America/Los_Angeles
+            current_time = datetime.now(pytz.timezone('America/Los_Angeles'))
+            time = current_time.strftime('%I:%M %p')
+            # Check if it's a 10 minute interval
+            if current_time.minute % 10 == 0:
+                # set channel name to current time
+                channel: CategoryChannel = self.client.get_channel(567147619122544641)
+                await channel.edit(name=f'PEPPER TIME: {time}')
+        except Exception as e:
+            logging.getLogger("Timestamp").error(e)
 
 
     @update_time.before_loop
