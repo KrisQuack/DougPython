@@ -1,6 +1,8 @@
 import logging
+
 import discord
 from discord.ext import commands, tasks
+
 
 class ReactionFilter(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -31,8 +33,8 @@ class ReactionFilter(commands.Cog):
                     continue
                 messages = [msg async for msg in channel.history(limit=messageInt)]
                 for message in messages:
-                    for reaction in message.reactions:\
-                        # Check if the reaction is not whitelisted
+                    for reaction in message.reactions: \
+                            # Check if the reaction is not whitelisted
                         if isinstance(reaction.emoji, discord.Emoji):
                             emoji_name = reaction.emoji.name
                         else:
@@ -55,6 +57,7 @@ class ReactionFilter(commands.Cog):
     @one_hour_loop.before_loop
     async def before_one_hour_loop(self):
         await self.client.wait_until_ready()  # Wait until the bot logs in
+
 
 async def setup(client):
     await client.add_cog(ReactionFilter(client))

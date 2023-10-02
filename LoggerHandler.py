@@ -1,6 +1,8 @@
 import logging
 from logging import StreamHandler
+
 from discord import Embed, Color, SyncWebhook
+
 
 class LoggerHandler(logging.Handler):
     def __init__(self, webhook_url: str) -> None:
@@ -28,6 +30,6 @@ class LoggerHandler(logging.Handler):
 
             embed = Embed(title=f"[{record.levelname}] Log Entry: {record.name}", description=record.msg, color=color)
             embed.set_footer(text=record.asctime)
-            self.webhook.send(content=message,embed=embed)
+            self.webhook.send(content=message, embed=embed)
         except Exception as e:
             print(f'Error sending log message: {e}')

@@ -1,5 +1,7 @@
-from azure.cosmos.aio import CosmosClient
 import os
+
+from azure.cosmos.aio import CosmosClient
+
 
 class DatabaseConfig:
     def __init__(self):

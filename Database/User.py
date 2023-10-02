@@ -1,6 +1,7 @@
-import asyncio
-from Database.DatabaseConfig import DatabaseConfig
 from discord import Member
+
+from Database.DatabaseConfig import DatabaseConfig
+
 
 class User:
     def __init__(self, database: DatabaseConfig):
@@ -12,7 +13,7 @@ class User:
             query='SELECT * FROM Users',
             enable_cross_partition_query=True
         )
-    
+
     async def get_user(self, member: Member):
         try:
             # Try to get the user from the database
@@ -20,7 +21,7 @@ class User:
         except:
             # If the user doesn't exist, insert them into the database
             self.dict = await self.database.Users.upsert_item(body={'id': str(member.id)})
-        
+
     async def get_user_by_key(self, key: str, value):
         ### Somehow do this without the looping users
         query = f"SELECT * FROM Users u WHERE u.{key} = '{value}'"
@@ -29,8 +30,7 @@ class User:
             self.dict = item
         return self
 
-    
-    async def upsert_user(self, member: Member, key: str = None, value = None):
+    async def upsert_user(self, member: Member, key: str = None, value=None):
         if self.dict is None and member is not None:
             await self.get_user(member)
         elif self.dict is None and member is None:

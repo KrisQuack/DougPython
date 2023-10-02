@@ -1,6 +1,7 @@
 import discord
-from discord import Message, TextChannel 
+from discord import Message, TextChannel
 from discord.ext import commands
+
 
 class AutoPublish(commands.Cog):
     def __init__(self, client):
@@ -13,6 +14,7 @@ class AutoPublish(commands.Cog):
         if channel.type == discord.ChannelType.news:
             # publish message
             await message.publish()
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(AutoPublish(self))

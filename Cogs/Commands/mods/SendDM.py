@@ -2,6 +2,7 @@ import discord
 from discord import app_commands, Embed
 from discord.ext import commands
 
+
 class SendDM(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client

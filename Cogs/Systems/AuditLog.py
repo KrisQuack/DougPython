@@ -2,6 +2,7 @@ import discord
 from discord import Embed, Color
 from discord.ext import commands
 
+
 class AuditLog(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
@@ -56,7 +57,8 @@ class AuditLog(commands.Cog):
         # If message content is empty or none, set it to "Media/Embed"
         content = message.content if message.content else "Media/Embed"
         main_embed.add_field(name='Content', value=content[0:1000], inline=False)
-        main_embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.display_avatar.url)
+        main_embed.set_author(name=f"{message.author.name} ({message.author.id})",
+                              icon_url=message.author.display_avatar.url)
 
         # List to hold all the embeds
         all_embeds = [main_embed]

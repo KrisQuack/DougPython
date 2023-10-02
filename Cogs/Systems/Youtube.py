@@ -6,8 +6,6 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 
-from Database.BotSettings import BotSettings
-
 
 class CheckYoutube(commands.Cog):
     def __init__(self, client):
@@ -54,7 +52,7 @@ class CheckYoutube(commands.Cog):
 
                         post_channel = self.client.get_channel(int(youtube_config['post_channel_id']))
                         mention_role = f'<@&{youtube_config["mention_role_id"]}>'
-                        
+
                         ## If is the vod channel and title does not contain VOD
                         if youtube_config['youtube_id'] == 'UCzL0SBEypNk4slpzSbxo01g' and video_title.find('VOD') == -1:
                             mention_role = f'<@&812501073289805884>'

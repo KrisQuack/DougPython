@@ -1,13 +1,11 @@
-from datetime import datetime
-import time
-from typing import List
 import logging
+from datetime import datetime
+from typing import List
 
 import discord
 import pytz
 from discord import app_commands, CategoryChannel
 from discord.ext import commands, tasks
-
 
 
 class Timestamp(commands.Cog):
@@ -71,7 +69,8 @@ class Timestamp(commands.Cog):
             current: str,
     ) -> List[app_commands.Choice[str]]:
         return [
-            app_commands.Choice(name=datetime.utcnow().strftime('%d/%b/%Y'), value=datetime.utcnow().strftime('%d/%b/%Y'))]
+            app_commands.Choice(name=datetime.utcnow().strftime('%d/%b/%Y'),
+                                value=datetime.utcnow().strftime('%d/%b/%Y'))]
 
     @timestamp.autocomplete('time')
     async def timezones_autocomplete(
@@ -79,8 +78,9 @@ class Timestamp(commands.Cog):
             interaction: discord.Interaction,
             current: str,
     ) -> List[app_commands.Choice[str]]:
-        return [app_commands.Choice(name=datetime.utcnow().strftime('%H:%M'), value=datetime.utcnow().strftime('%H:%M'))]
-    
+        return [
+            app_commands.Choice(name=datetime.utcnow().strftime('%H:%M'), value=datetime.utcnow().strftime('%H:%M'))]
+
     @tasks.loop(minutes=1)
     async def update_time(self):
         try:
@@ -94,7 +94,6 @@ class Timestamp(commands.Cog):
                 await channel.edit(name=f'PEPPER TIME: {time}')
         except Exception as e:
             logging.getLogger("Timestamp").error(e)
-
 
     @update_time.before_loop
     async def before_update_time(self):

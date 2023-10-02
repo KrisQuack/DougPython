@@ -1,8 +1,9 @@
-import discord
-from discord import AutoModAction, Embed, Color
-from discord.ext import commands
-import re
 import datetime
+import re
+
+from discord import AutoModAction
+from discord.ext import commands
+
 
 class AutoMod(commands.Cog):
     def __init__(self, client):

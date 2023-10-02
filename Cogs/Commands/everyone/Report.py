@@ -18,7 +18,7 @@ class Report(commands.GroupCog, name="report", description="Report a user or mes
         self.report_message.guild_only = True
         self.client.tree.add_command(self.report_user)
         self.client.tree.add_command(self.report_message)
-        
+
     @app_commands.command(name="user", description="Report a user")
     @app_commands.guild_only()
     async def report_user_command(self, interaction: discord.Interaction, user: discord.Member):

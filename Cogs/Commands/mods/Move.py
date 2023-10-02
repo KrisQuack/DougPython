@@ -1,6 +1,6 @@
 import asyncio
-
 import io
+
 import aiohttp
 import discord
 from discord import app_commands
@@ -18,7 +18,8 @@ class Move(commands.Cog):
         message_id="The ID of the message to move",
         channel="The channel to move the message to"
     )
-    async def move(self, interaction: discord.Interaction, message_id: str, channel: discord.TextChannel|discord.Thread):
+    async def move(self, interaction: discord.Interaction, message_id: str,
+                   channel: discord.TextChannel | discord.Thread):
         await interaction.response.defer(ephemeral=True)
         thread = None  # Initialize thread to None
         # Identify if it's a thread
@@ -53,13 +54,15 @@ class Move(commands.Cog):
                 attachments = await asyncio.gather(*tasks)
                 files = [discord.File(io.BytesIO(a[0]), filename=a[1]) for a in attachments]  # Use BytesIO here
                 await webhook.send(content=content, username=username, avatar_url=avatar_url,
-                                embeds=message_to_move.embeds, files=files)
+                                   embeds=message_to_move.embeds, files=files)
         else:
             if thread:
-                await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds, thread=thread)
+                await webhook.send(content=content, username=username, avatar_url=avatar_url,
+                                   embeds=message_to_move.embeds, thread=thread)
             else:
-                await webhook.send(content=content, username=username, avatar_url=avatar_url, embeds=message_to_move.embeds)
-        
+                await webhook.send(content=content, username=username, avatar_url=avatar_url,
+                                   embeds=message_to_move.embeds)
+
         await message_to_move.reply(f"Your message has been moved to {channel.mention}")
         await message_to_move.delete()
         await interaction.followup.send("Message moved")

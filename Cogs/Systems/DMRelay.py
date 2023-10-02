@@ -2,6 +2,7 @@ import discord
 from discord import Embed, Color
 from discord.ext import commands
 
+
 class DMRelay(commands.Cog):
     def __init__(self, client):
         self.client = client
@@ -12,7 +13,8 @@ class DMRelay(commands.Cog):
         if isinstance(message.channel, discord.DMChannel) and message.author != self.client.user:
             # Create the main embed
             embed = Embed(description=message.content, color=Color.blue())  # Using blue as a placeholder for color
-            embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.display_avatar.url)
+            embed.set_author(name=f"{message.author.name} ({message.author.id})",
+                             icon_url=message.author.display_avatar.url)
             embed.timestamp = message.created_at
 
             # If there are attachments, add them to the embed
