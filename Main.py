@@ -93,8 +93,8 @@ class Client(commands.Bot):
 # Create the logger
 logger = LoggerHandler(os.environ.get('LOGGER_WEBHOOK'))
 discord.utils.setup_logging(level=logging.INFO, handler=logger)
-# Log Python version
-logging.info(f'Python version: {sys.version}')
+# Log Python version as error to cause ping
+logging.error(f'Python version: {sys.version}')
 # Start the client
 client = Client()
 client.run(os.environ.get('TOKEN'), log_handler=None)

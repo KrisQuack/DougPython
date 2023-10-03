@@ -2,6 +2,8 @@ import discord
 from discord import Embed, Color
 from discord.ext import commands
 
+from Database.DiscordEvent import DiscordEvent
+
 
 class AuditLog(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -12,12 +14,16 @@ class AuditLog(commands.Cog):
         embed = Embed(title="User Joined", color=Color.green())
         embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
         await self.client.settings.log_channel.send(embed=embed)
+        # Add event to database
+        await DiscordEvent(self.client.database).process_event(after=member)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         embed = Embed(title="User Left", color=Color.red())
         embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
         await self.client.settings.log_channel.send(embed=embed)
+        # Add event to database
+        await DiscordEvent(self.client.database).process_event(before=member)
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -39,11 +45,15 @@ class AuditLog(commands.Cog):
         embed.set_author(name=f"{after.name} ({after.id})", icon_url=after.display_avatar.url)
         if embed.fields:
             await self.client.settings.log_channel.send(embed=embed)
+        # Add event to database
+        await DiscordEvent(self.client.database).process_event(before=before, after=after)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot:
             return
+        # Add event to database
+        await DiscordEvent(self.client.database).process_event(after=message)
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
@@ -76,6 +86,9 @@ class AuditLog(commands.Cog):
         # Send all embeds in one go
         await self.client.settings.log_channel.send(embeds=all_embeds)
 
+        # Add event to database
+        await DiscordEvent(self.client.database).process_event(before=message)
+
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
         if after.author.bot:
@@ -90,6 +103,9 @@ class AuditLog(commands.Cog):
         embed.add_field(name="After", value=after.content[0:1000], inline=False)
         embed.set_author(name=f"{before.author.name} ({before.author.id})", icon_url=before.author.display_avatar.url)
         await self.client.settings.log_channel.send(embed=embed)
+
+        # Add event to database
+        await DiscordEvent(self.client.database).process_event(before=before, after=after)
 
 
 async def setup(self: commands.Bot) -> None:

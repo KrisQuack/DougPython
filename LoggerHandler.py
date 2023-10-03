@@ -18,6 +18,8 @@ class LoggerHandler(logging.Handler):
             if record.name == "azure.core.pipeline.policies.http_logging_policy":
                 return
             self.stream_handler.emit(record)
+            if "rate limited" in record.msg:
+                return
             if record.levelno == logging.ERROR:
                 color = Color.red()
                 message = '<@130062174918934528>'
