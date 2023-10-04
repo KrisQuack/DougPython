@@ -4,6 +4,7 @@ import re
 from discord import AutoModAction
 from discord.ext import commands
 
+from Database.DiscordEvent import DiscordEvent
 
 class AutoMod(commands.Cog):
     def __init__(self, client):
@@ -17,13 +18,15 @@ class AutoMod(commands.Cog):
             guild = self.client.settings.guild
             member = guild.get_member(action.user_id)
             # Get timestamp for one week ago
-            one_week_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
-            messages = [msg async for msg in member.history(limit=10000, after=one_week_ago)]
-            print(f"Deez Nutz ({len(messages)} messages) - {member.name} ({member.id})")
+            databaseEvents = DiscordEvent(self.database).get_all_events_by_key('member_id', str(member.id))
+            databaseEventsList = [item async for item in databaseEvents]
+            # Only keep events with event as message_create
+            databaseEventsList = [item for item in databaseEventsList if item['event'] == 'message_create']
+            print(f"Deez Nutz ({len(databaseEventsList)} messages) - {member.name} ({member.id})")
             # Count messages that match regex
             regex = action.matched_keyword
             count = 0
-            for message in messages:
+            for message in databaseEventsList:
                 if re.search(regex, message.content):
                     count += 1
             # Time out the user based on the count, incrementing hours like 1,2,4,8
