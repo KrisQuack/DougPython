@@ -18,7 +18,9 @@ class Minecraft(commands.Cog):
         random_part = ''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') for i in range(5))
         code = f'DMC-{random_part}'
         # Add the code to the database
-        await User(self.client.database).upsert_user(interaction.user, 'mc_redeem', code)
+        dbUser = await User(self.client.database).get_user(interaction.user)
+        dbUser['mc_redeem'] = code
+        await User(self.client.database).update_user(str(interaction.user.id), dbUser)
         # Send the code to the user
         await interaction.response.send_message(f"Your code is: **{code}**\nUse this in the Twitch redemption box",
                                                 ephemeral=True)

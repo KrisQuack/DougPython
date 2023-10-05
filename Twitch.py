@@ -120,8 +120,11 @@ class TwitchBot:
             await msg.reply("Let me sleep")
         if msg.text.startswith('DMC-'):
             try:
-                dbUser = await User(self.discordBot.database).get_user_by_key('mc_redeem', msg.text)
-                dbUserID = dbUser.dict['id']
+                query = f"SELECT * FROM u WHERE u.mc_redeem = '{msg.text}'"
+                dbUserResult = await User(self.discordBot.database).query_users(query)
+                # Get the first result
+                dbUser: dict = [item async for item in dbUserResult][0]
+                dbUserID = dbUser['id']
                 if dbUser:
                     # Post embed for redemption
                     embed = Embed(title=f"Minecraft Redemption: {msg.user.display_name}", color=Color.orange())
@@ -135,10 +138,12 @@ class TwitchBot:
                     # respond to the user
                     await msg.reply(f"Successfully redeemed, please wait for a mod to check your info")
                     # Remove the code from the database
-                    await dbUser.upsert_user(None, 'mc_redeem', None)
+                    dbUser.pop('mc_redeem')
+                    await User(self.discordBot.database).update_user(dbUserID, dbUser)
                 else:
                     raise Exception("Invalid code")
-            except:
+            except Exception as e:
+                logging.getLogger("Twitch").exception(f"Error redeeming code: {e}")
                 await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
     async def run(self):

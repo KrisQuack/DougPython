@@ -10,4 +10,4 @@ class DatabaseConfig:
         self.database = self.client.get_database_client('DougBot')
         self.BotSettings = self.database.get_container_client('BotSettings')
         self.Users = self.database.get_container_client('Users')
-        self.DiscordEvents = self.database.get_container_client('DiscordEvents')
+        self.Messages = self.database.get_container_client('Messages')
