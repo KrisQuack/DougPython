@@ -114,10 +114,11 @@ class AuditLog(commands.Cog):
         count = 0
         for channel in channels:
             # Get all messages in channel from the last 4 hours
-            messages = [msg async for msg in channel.history(limit=sys.maxsize, after=datetime.now() - timedelta(hours=4))]
+            dateafter = datetime.now() - timedelta(hours=4)
+            messages = [msg async for msg in channel.history(limit=sys.maxsize, after=dateafter)]
             if (len(messages) != 0):
                 # Get all messages in database
-                dbMessages = await Message(self.client.database).query_messages(f"SELECT m.id FROM m WHERE m.channel_id = '{channel.id}'")
+                dbMessages = await Message(self.client.database).query_messages(f"SELECT m.id FROM m WHERE m.channel_id = '{channel.id}' AND m.created_at > '{dateafter.astimezone(timezone.utc).isoformat()}'")
                 dbMessageList = [item async for item in dbMessages]
                 dbMessageList = [item['id'] for item in dbMessageList]
                 # Loop through messages
