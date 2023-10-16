@@ -54,7 +54,7 @@ class CheckYoutube(commands.Cog):
                         mention_role = f'<@&{youtube_config["mention_role_id"]}>'
 
                         ## If is the vod channel and title does not contain VOD
-                        if youtube_config['youtube_id'] == 'UCzL0SBEypNk4slpzSbxo01g' and video_title.find('VOD') == -1:
+                        if youtube_config['youtube_id'] == 'UCzL0SBEypNk4slpzSbxo01g' and video_title.find('(VOD)') == -1:
                             mention_role = f'<@&812501073289805884>'
 
                         await post_channel.send(f"{mention_role}", embed=embed)

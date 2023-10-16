@@ -25,8 +25,6 @@ class ReactionFilter(commands.Cog):
             guild = self.client.settings.guild
             guild_emotes = guild.emojis
             emote_whitelist += [emote.name for emote in guild_emotes]
-            # Get the mod role from settings
-            mod_role = self.client.settings.mod_role
 
             for channel in self.client.settings.reaction_filter_channels:
                 if channel is None:
@@ -42,9 +40,9 @@ class ReactionFilter(commands.Cog):
                         if emoji_name not in emote_whitelist:
                             # Get all users who reacted with this emoji
                             users = [usr async for usr in reaction.users() if isinstance(usr, discord.Member)]
-                            # Check if any user in the reaction is in the mod_role members list
-                            if any(user in mod_role.members for user in users):
-                                continue  # Skip this reaction if a user from the mod_role members list reacted
+                            # Check if any user in the reaction is a mod (has manage users permission)
+                            if any(user.guild_permissions.moderate_members for user in users):
+                                continue  # Skip this reaction
                             # Remove the reaction
                             await message.clear_reaction(reaction.emoji)
         except Exception as e:

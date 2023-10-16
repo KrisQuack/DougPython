@@ -9,8 +9,11 @@ from discord.ext import commands, tasks
 
 class Verification(commands.Cog):
     def __init__(self, client: commands.Bot):
-        self.client = client
+        self.client: commands.Bot = client
         self.check_verification.start()
+        self.onboarding = self.client.get_channel(1041406855123042374)
+        self.new_role = self.client.guilds[0].get_role(935020318408462398)
+        self.member_role = self.client.guilds[0].get_role(720807137319583804)
 
     @app_commands.command(name="verificationsetup")
     @app_commands.guild_only()
@@ -34,28 +37,40 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
         # Respond to the interaction
         await interaction.response.send_message("Verification setup complete!", ephemeral=True)
 
-    @tasks.loop(minutes=10)
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        await self.onboarding.send(f"{member.mention} please complete the verification above", delete_after=60)
+
+    @tasks.loop(minutes=5)
     async def check_verification(self):
         # Assign variables
-        ten_minutes_ago = (datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=10))
+        ten_minutes_ago = (datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=60))
         one_week_ago = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(weeks=1)
-        new_role = self.client.guilds[0].get_role(935020318408462398)
-        member_role = self.client.guilds[0].get_role(720807137319583804)
         # Loop through all members in the server who do not have the member role
         for member in self.client.guilds[0].members:
             # If the member does not have the member role
-            if member_role in member.roles:
+            if self.member_role in member.roles:
                 continue
-            # If the member is not a bot, joined more than 10 minutes ago, and does not have the new role
-            if (not member.bot and
-                    member.joined_at < ten_minutes_ago and
-                    new_role not in member.roles):
-                # Kick the member for not being verified
-                await member.kick(reason="Not verified")
+            # If the member is not a bot and does not have the new role
+            if not member.bot and self.new_role not in member.roles:
+                #If the member has been in the server for more than 10 minutes
+                if member.joined_at < ten_minutes_ago:
+                    # Kick the member for not being verified
+                    await member.kick(reason="Not verified")
+                else:
+                    # Send the member a reminder to verify
+                    await self.onboarding.send(f"{member.mention} you have not yet verified and will be kicked in the next 5 minutes if not complete", delete_after=60)
             # If the member has been in the server for more than one week and has the new role
-            elif (member.joined_at < one_week_ago and new_role in member.roles):
+            elif member.joined_at < one_week_ago and self.new_role in member.roles:
                 # Assign the member role to the member
-                await member.add_roles(member_role, reason="Graduated")
+                await member.add_roles(self.member_role, reason="Graduated")
+        # # Check if there are any messages in the onboarding channel older than 10 minutes
+        # messages = [msg async for msg in self.onboarding.history(limit=100, after=ten_minutes_ago)]
+        # for message in messages:
+        #     # If it is not the verification message
+        #     if message.id != 1158902786524721212:
+        #         await message.delete()
+
 
     @check_verification.before_loop
     async def before_check_verification(self):

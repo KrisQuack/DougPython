@@ -14,8 +14,7 @@ class Message:
 
     def get_all_messages(self):
         return self.container.query_items(
-            query='SELECT * FROM m',
-            enable_cross_partition_query=True
+            query='SELECT * FROM m', continuation_token_limit=1
         )
 
     async def get_message(self, discMessage: discord.Message):
@@ -41,4 +40,4 @@ class Message:
         await self.container.replace_item(item=message_id, body=update_dict)
 
     async def query_messages(self, query):
-        return self.container.query_items(query=query)
+        return self.container.query_items(query=query, continuation_token_limit=1)

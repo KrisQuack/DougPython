@@ -98,15 +98,15 @@ class TwitchBot:
                     points_percentage = (outcome["total_points"] / total_points) * 100
                     ratio = total_points / outcome["total_points"]
                     top_predictors_str = "\n".join([
-                                                       f"{predictor['user_display_name']} {'won' if predictor['result']['type'] == 'WIN' else 'lost'} {predictor['result'].get('points_won', predictor['points'])} points"
-                                                       for predictor in outcome["top_predictors"][:5]]) or "None"
+                        f"{predictor['user_display_name']} {'won' if predictor['result']['type'] == 'WIN' else 'lost'} {predictor['result']['points_won'] if predictor['result']['points_won'] is not None else predictor['points']} points"
+                        for predictor in outcome["top_predictors"][:5]]) or "None"
                     embed.add_field(name=f"Outcome: {outcome['title']} ({outcome['color']}) {is_winner}",
                                     value=f"Points: {outcome['total_points']} ({points_percentage:.2f}%)\nUsers: {outcome['total_users']} ({user_percentage:.2f}%)\nRatio: {ratio:.2f}\n**Top Predictors:**\n{top_predictors_str}",
                                     inline=False)
 
         # If an embed was created, send it via webhook
         if embed:
-            self.discordBot.settngs.twitch_gambling_channel.send(embedMessage, embed=embed)
+            await self.discordBot.settings.twitch_gambling_channel.send(embedMessage, embed=embed)
 
     async def on_chat_ready(self, data: EventData):
         logging.getLogger("Twitch").info('Chat is ready for work, joining channels')
@@ -174,6 +174,7 @@ class TwitchBot:
         logging.getLogger("Twitch").info('Twitch PubSub listening')
         # Set up the chat
         self.chat = await Chat(self.twitch_bot, callback_loop=self.discordBot.loop)
+        self.chat.set_prefix("✵")
         self.chat.register_event(ChatEvent.READY, self.on_chat_ready)
         self.chat.register_event(ChatEvent.JOINED, self.on_chat_joined)
         self.chat.register_event(ChatEvent.MESSAGE, self.on_chat_message)

@@ -55,7 +55,12 @@ class Ticket(commands.GroupCog, name="ticket"):
             mention_list = "\n".join(
                 [f"{display_name} ({user_id})" for user_id, display_name in mentioned_users.items()])
             message = f"Closed ticket: {ticketChannel.name}\nParticipants:\n{mention_list}"
-            await interaction.user.send(message, files=user_files)
+            # For each user in the ticket, send them a message with the ticket chat
+            # Except for users with the mod role
+            for user in ticketChannel.members:
+                if user.guild_permissions.moderate_members or user.bot:
+                    continue
+                await user.send(message, files=user_files)
             await closeChannel.send(message, files=channel_files)
 
             await ticketChannel.delete()

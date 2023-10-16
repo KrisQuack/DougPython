@@ -15,7 +15,8 @@ class User:
     def get_all_users(self):
         return self.database.Users.query_items(
             query='SELECT * FROM Users',
-            enable_cross_partition_query=True
+            enable_cross_partition_query=True,
+            continuation_token_limit=1
         )
 
     async def get_user(self, discMember: Member):
@@ -41,4 +42,4 @@ class User:
         await self.container.replace_item(item=user_id, body=update_dict)
 
     async def query_users(self, query):
-        return self.container.query_items(query=query)
+        return self.container.query_items(query=query, continuation_token_limit=1)
