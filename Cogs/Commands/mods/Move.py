@@ -47,21 +47,26 @@ class Move(commands.Cog):
         username = author.display_name
         avatar_url = author.display_avatar.url
 
-        # Handle attachments
+        # Prepare send kwargs
+        send_kwargs = {
+            'content': content,
+            'username': username,
+            'avatar_url': avatar_url,
+            'embeds': message_to_move.embeds,
+        }
+
+        if thread:
+            send_kwargs['thread'] = thread
+
         if message_to_move.attachments:
             async with aiohttp.ClientSession() as session:
-                tasks = [fetch_attachment(session, at.url) for at in message_to_move.attachments]
+                tasks = [fetch_attachment(session, attachment.url) for attachment in message_to_move.attachments]
                 attachments = await asyncio.gather(*tasks)
-                files = [discord.File(io.BytesIO(a[0]), filename=a[1]) for a in attachments]  # Use BytesIO here
-                await webhook.send(content=content, username=username, avatar_url=avatar_url,
-                                   embeds=message_to_move.embeds, files=files)
-        else:
-            if thread:
-                await webhook.send(content=content, username=username, avatar_url=avatar_url,
-                                   embeds=message_to_move.embeds, thread=thread)
-            else:
-                await webhook.send(content=content, username=username, avatar_url=avatar_url,
-                                   embeds=message_to_move.embeds)
+                files = [discord.File(io.BytesIO(data), filename=name) for data, name in attachments]
+                send_kwargs['files'] = files
+
+        # Send the message
+        await webhook.send(**send_kwargs)
 
         await message_to_move.reply(f"Your message has been moved to {channel.mention}")
         await message_to_move.delete()

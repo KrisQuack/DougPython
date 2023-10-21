@@ -2,7 +2,7 @@ import logging
 
 from discord.ext import commands
 
-from Database.DatabaseConfig import DatabaseConfig
+from Classes.Database.DatabaseConfig import DatabaseConfig
 
 
 class BotSettings:

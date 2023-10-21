@@ -1,21 +1,15 @@
 from datetime import timezone
 
 import discord
-from discord import Member
 from azure.cosmos.aio import ContainerProxy
 
-from Database.DatabaseConfig import DatabaseConfig
+from Classes.Database.DatabaseConfig import DatabaseConfig
 
 
 class Message:
     def __init__(self, database_config: DatabaseConfig):
         self.database = database_config
         self.container: ContainerProxy = self.database.Messages
-
-    def get_all_messages(self):
-        return self.container.query_items(
-            query='SELECT * FROM m', continuation_token_limit=1
-        )
 
     async def get_message(self, discMessage: discord.Message):
         try:

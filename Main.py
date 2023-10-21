@@ -8,10 +8,10 @@ from discord import Embed, Color
 from discord.app_commands import AppCommandError
 from discord.ext import commands
 
-from Database.BotSettings import BotSettings
-from Database.DatabaseConfig import DatabaseConfig
+from Classes.Database.BotSettings import BotSettings
+from Classes.Database.DatabaseConfig import DatabaseConfig
 from LoggerHandler import LoggerHandler
-from Twitch import TwitchBot
+from Classes.Twitch import TwitchBot
 
 
 class Client(commands.Bot):

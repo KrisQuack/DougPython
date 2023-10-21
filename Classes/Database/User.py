@@ -1,23 +1,15 @@
 from datetime import timezone
 
-import discord
 from discord import Member
 from azure.cosmos.aio import ContainerProxy
 
-from Database.DatabaseConfig import DatabaseConfig
+from Classes.Database.DatabaseConfig import DatabaseConfig
 
 
 class User:
     def __init__(self, database_config: DatabaseConfig):
         self.database = database_config
         self.container: ContainerProxy = self.database.Users
-
-    def get_all_users(self):
-        return self.database.Users.query_items(
-            query='SELECT * FROM Users',
-            enable_cross_partition_query=True,
-            continuation_token_limit=1
-        )
 
     async def get_user(self, discMember: Member):
         try:

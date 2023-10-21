@@ -11,7 +11,7 @@ from twitchAPI.pubsub import PubSub
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, ChatEvent
 
-from Database.User import User
+from Classes.Database.User import User
 
 
 class PlaceholderThread:
@@ -34,6 +34,11 @@ class TwitchBot:
         prediction = data["data"]
         embed = None
         embedMessage = None
+        # Dict for color mapping
+        color_emotes = {
+            "BLUE": "🟦",
+            "PINK": "🟪",
+        }
 
         # Helper function to create an embed with a given title and color
         def create_embed(title, color=Color.green()):
@@ -58,10 +63,11 @@ class TwitchBot:
             # Calculate the lock timestamp
             lock_timestamp = int(
                 (created_at + timedelta(seconds=prediction["event"]["prediction_window_seconds"])).timestamp())
+            # Set the embed message
             embedMessage = '<@&1080237787174948936>'
             embed.description = f"Prediction will be locked <t:{lock_timestamp}:R>"
             embed.add_field(name="Outcomes", value="\n".join(
-                [f"{outcome['title']}: {outcome['color']}" for outcome in prediction["event"]["outcomes"]]),
+                [f"{color_emotes[outcome['color']]} {outcome['title']}" for outcome in prediction["event"]["outcomes"]]),
                             inline=False)
 
         # Handling event-updated type
@@ -81,7 +87,7 @@ class TwitchBot:
                     top_predictors_str = "\n".join(
                         [f"{predictor['user_display_name']} bet {predictor['points']} points" for predictor in
                          outcome["top_predictors"][:5]]) or "None"
-                    embed.add_field(name=f"Outcome: {outcome['title']} ({outcome['color']})",
+                    embed.add_field(name=f"{color_emotes[outcome['color']]} Outcome: {outcome['title']}",
                                     value=f"Points: {outcome['total_points']} ({points_percentage:.2f}%)\nUsers: {outcome['total_users']} ({user_percentage:.2f}%)\nRatio: {ratio:.2f}\n**Top Predictors:**\n{top_predictors_str}",
                                     inline=False)
 
@@ -100,7 +106,7 @@ class TwitchBot:
                     top_predictors_str = "\n".join([
                         f"{predictor['user_display_name']} {'won' if predictor['result']['type'] == 'WIN' else 'lost'} {predictor['result']['points_won'] if predictor['result']['points_won'] is not None else predictor['points']} points"
                         for predictor in outcome["top_predictors"][:5]]) or "None"
-                    embed.add_field(name=f"Outcome: {outcome['title']} ({outcome['color']}) {is_winner}",
+                    embed.add_field(name=f"{color_emotes[outcome['color']]} Outcome: {outcome['title']} {is_winner}",
                                     value=f"Points: {outcome['total_points']} ({points_percentage:.2f}%)\nUsers: {outcome['total_users']} ({user_percentage:.2f}%)\nRatio: {ratio:.2f}\n**Top Predictors:**\n{top_predictors_str}",
                                     inline=False)
 

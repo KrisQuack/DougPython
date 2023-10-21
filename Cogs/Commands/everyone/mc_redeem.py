@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from Database.User import User
+from Classes.Database.User import User
 
 
 class Minecraft(commands.Cog):

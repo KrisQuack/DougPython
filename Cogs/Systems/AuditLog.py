@@ -1,4 +1,3 @@
-from asyncio import sleep
 from datetime import datetime, timezone, timedelta
 import time
 import logging
@@ -8,8 +7,8 @@ import discord
 from discord import RawMessageUpdateEvent, RawMessageDeleteEvent
 from discord.ext import commands, tasks
 
-from Database.User import User
-from Database.Message import Message
+from Classes.Database.User import User
+from Classes.Database.Message import Message
 
 class AuditLog(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -87,7 +86,7 @@ class AuditLog(commands.Cog):
 
         if message.edited_at:
             edit = {'edited_at': message.edited_at.astimezone(timezone.utc).isoformat(), 'content': message.content}
-            message_dict['edits'].append(edit)
+            message_dict.setdefault('edits', []).append(edit)
             message_dict['updated_at'] = message.edited_at.astimezone(timezone.utc).isoformat()
 
             await Message(self.client.database).update_message(str(message.id), message_dict)
