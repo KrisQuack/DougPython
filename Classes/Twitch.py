@@ -8,6 +8,8 @@ from twitchAPI.chat import Chat, EventData, ChatMessage
 from twitchAPI.helper import first
 from twitchAPI.oauth import refresh_access_token
 from twitchAPI.pubsub import PubSub
+from twitchAPI.eventsub.websocket import EventSubWebsocket
+from twitchAPI.object.eventsub import ChannelUpdateEvent, StreamOnlineEvent, StreamOfflineEvent
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, ChatEvent
 
@@ -114,6 +116,28 @@ class TwitchBot:
         if embed:
             await self.discordBot.settings.twitch_gambling_channel.send(embedMessage, embed=embed)
 
+    async def on_channel_update(self, data: ChannelUpdateEvent):
+        # Create and embed of the channel update
+        embed = Embed(title=f"Channel Update: {data.event.broadcaster_user_name}", color=Color.orange())
+        embed.add_field(name="Title", value=data.event.title, inline=True)
+        embed.add_field(name="Category", value=data.event.category_name, inline=True)
+        embed.add_field(name="Language", value=data.event.language, inline=True)
+        embed.add_field(name="Tags", value=','.join(data.event.content_classification_labels), inline=True)
+        # Send the embed to the mod channel
+        await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
+
+    async def on_stream_online(self, data: StreamOnlineEvent):
+        # Create and embed of the channel update
+        embed = Embed(title=f"Stream Online: {data.event.broadcaster_user_name}", color=Color.green())
+        # Send the embed to the mod channel
+        await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
+
+    async def on_stream_offline(self, data: StreamOfflineEvent):
+        # Create and embed of the channel update
+        embed = Embed(title=f"Stream Offline: {data.event.broadcaster_user_name}", color=Color.red())
+        # Send the embed to the mod channel
+        await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
+
     async def on_chat_ready(self, data: EventData):
         logging.getLogger("Twitch").info('Chat is ready for work, joining channels')
         await data.chat.join_room(self.twitch_channel_name)
@@ -174,10 +198,16 @@ class TwitchBot:
         # Set up the pubsub
         pubsub = PubSub(self.twitch_bot, self.discordBot.loop)
         pubsub.start()
-        # you can either start listening before or after you started pubsub.
         await pubsub.listen_undocumented_topic(f"predictions-channel-v1.{self.channel_user.id}",
                                                self.on_prediction_event)
         logging.getLogger("Twitch").info('Twitch PubSub listening')
+        # Set up EventSub
+        eventsub = EventSubWebsocket(self.twitch_bot, callback_loop=self.discordBot.loop)
+        eventsub.start()
+        await eventsub.listen_channel_update_v2(self.channel_user.id, self.on_channel_update)
+        await eventsub.listen_stream_online(self.channel_user.id, self.on_stream_online)
+        await eventsub.listen_stream_offline(self.channel_user.id, self.on_stream_offline)
+        logging.getLogger("Twitch").info('Twitch EventSub listening')
         # Set up the chat
         self.chat = await Chat(self.twitch_bot, callback_loop=self.discordBot.loop)
         self.chat.set_prefix("✵")

@@ -2,6 +2,8 @@ import asyncio
 import io
 
 import aiohttp
+from urllib.parse import urlparse
+import os
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -62,7 +64,13 @@ class Move(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 tasks = [fetch_attachment(session, attachment.url) for attachment in message_to_move.attachments]
                 attachments = await asyncio.gather(*tasks)
-                files = [discord.File(io.BytesIO(data), filename=name) for data, name in attachments]
+                files = [
+                    discord.File(
+                        io.BytesIO(data),
+                        filename=os.path.basename(urlparse(name).path)
+                    )
+                    for data, name in attachments
+                ]
                 send_kwargs['files'] = files
 
         # Send the message
