@@ -44,14 +44,6 @@ class Ticket(commands.GroupCog, name="ticket"):
 
                 all_attachments = await asyncio.gather(*tasks)
 
-            user_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
-                          enumerate(all_attachments)]
-            user_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
-
-            channel_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
-                             enumerate(all_attachments)]
-            channel_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
-
             mention_list = "\n".join(
                 [f"{display_name} ({user_id})" for user_id, display_name in mentioned_users.items()])
             message = f"Closed ticket: {ticketChannel.name}\nParticipants:\n{mention_list}"
@@ -60,7 +52,15 @@ class Ticket(commands.GroupCog, name="ticket"):
             for user in ticketChannel.members:
                 if user.guild_permissions.moderate_members or user.bot:
                     continue
+                user_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
+                              enumerate(all_attachments)]
+                user_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
                 await user.send(message, files=user_files)
+
+            # Send the ticket chat to the close channel
+            channel_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
+                             enumerate(all_attachments)]
+            channel_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
             await closeChannel.send(message, files=channel_files)
 
             await ticketChannel.delete()
