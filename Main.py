@@ -12,6 +12,7 @@ from Classes.Database.BotSettings import BotSettings
 from Classes.Database.DatabaseConfig import DatabaseConfig
 from LoggerHandler import LoggerHandler
 from Classes.Twitch import TwitchBot
+from Classes.GPT import GPT
 
 
 class Client(commands.Bot):
@@ -30,6 +31,11 @@ class Client(commands.Bot):
             self.database = DatabaseConfig()
             self.settings = BotSettings(self.database)
             await self.settings.get_settings(self)
+            self.openai = GPT(
+                api_version=self.settings.dict['ai_api_version'],
+                azure_endpoint=self.settings.dict['ai_azure_endpoint'],
+                api_key=self.settings.dict['ai_api_key'],
+            )
             await self.register_cogs()
             self.tree.on_error = self.on_interaction_fail
             synced = await self.tree.sync()

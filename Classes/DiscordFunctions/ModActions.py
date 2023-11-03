@@ -10,7 +10,6 @@ async def Timeout_User(member: Member, duration: timedelta, reason: str):
     timestamp = int(expiration_datetime.timestamp())  # Convert to Unix timestamp
     # Timeout the user
     await member.timeout(duration, reason=reason)
-    logging.info(f"Timed out {member.display_name} for {duration} for {reason}")
     # Send the user a DM
     embed = Embed(title=f"Timeout",
                   description=f"Your timeout will be lifted <t:{timestamp}:R>",

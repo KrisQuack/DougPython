@@ -31,7 +31,7 @@ class AutoMod(commands.Cog):
     @commands.Cog.listener()
     async def on_message_edit(self, before, after: discord.Message):
         # Check if the message is from a bot, mod or DM
-        if after.author.bot or after.author.guild_permissions.moderate_members or after.guild is None:
+        if after.guild is None or after.author.bot or after.author.guild_permissions.moderate_members:
             return
         # DeezNutz
         await self.DeezNutz(after)
@@ -49,12 +49,12 @@ class AutoMod(commands.Cog):
 
     async def DeezNutz(self, message: discord.Message):
         # Check if the message meets the regex
-        pattern = r'(de[ei]s?[ez]|d[ei]s|d[iz]z|dietz|dees|deeze|thoze|dints|dintz) ?(?:\bnut[sz]?\b|🥜|testicles)|(?:\bthese\b|\bthose\b|\bthem\b|\bthis\b|\bthe[msz]e\b) ?(?:\bnut[sz]?\b|🥜|testicles)|\bthe[msz]e\b testicles'
+        pattern =  r"((d+e+[zse]*)|(th+e+[zs]*)|(th[ozse]+))\s*(nut[zs]|testicle[sz])"
         if re.search(pattern, message.content, re.IGNORECASE):
             # Mark an eyes emote on the message
             await message.add_reaction('👀')
             # Check their last two weeks of messages
-            messages = await Message(self.client.database).query_messages(f"SELECT m.content FROM m WHERE m.user_id = '{message.author.id}' AND m.created_at > '{(datetime.datetime.utcnow() - datetime.timedelta(days=14)).isoformat()}'")
+            messages = await Message(self.client.database).query_messages(f"SELECT m.content FROM m WHERE m.user_id = '{message.author.id}' AND m.created_at > '{(datetime.datetime.utcnow() - datetime.timedelta(weeks=4)).isoformat()}'")
             messageList = [item async for item in messages]
             messageList = [item['content'] for item in messageList]
             # Count the number of times they've said deez nuts
@@ -70,6 +70,7 @@ class AutoMod(commands.Cog):
                 timeout_hours = lengths[time_index]
                 timeout = datetime.timedelta(hours=timeout_hours)
                 await Timeout_User(message.author, timeout, 'https://discord.com/channels/567141138021089308/880127379119415306/1119011566638080010')
+                logging.info(f"Timed out {message.author.display_name} for {timeout} for deez nuts\nMessage: {message.content}\n{message.jump_url}")
 
     async def ForumAutomod(self, thread: discord.Thread):
         if not isinstance(thread.parent, discord.ForumChannel):

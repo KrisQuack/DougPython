@@ -1,4 +1,5 @@
 import logging
+import os
 from logging import StreamHandler
 
 from discord import Embed, Color, SyncWebhook
@@ -12,6 +13,7 @@ class LoggerHandler(logging.Handler):
         self.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
         self.stream_handler = StreamHandler()  # Initialize a stream handler for terminal logging
         self.stream_handler.setFormatter(self.formatter)  # Set formatter for terminal logging
+        self.warning_and_above_count = 0  # Initialize the counter for warning and above events
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
@@ -26,9 +28,11 @@ class LoggerHandler(logging.Handler):
                 return
             # Determine embed color based on log level
             if record.levelno == logging.ERROR:
+                self.warning_and_above_count += 1  # Increment warning and above counter
                 color = Color.red()
                 message = '<@130062174918934528>'  # Send @mention in Discord for ERROR logs
             elif record.levelno == logging.WARNING:
+                self.warning_and_above_count += 1  # Increment warning and above counter
                 color = Color.gold()
             elif record.levelno == logging.INFO:
                 color = Color.blue()
@@ -45,6 +49,9 @@ class LoggerHandler(logging.Handler):
             embed.set_footer(text=record.asctime)  # Set footer to show log timestamp
             # Send log details to Discord via webhook
             self.webhook.send(content=message, embed=embed)
+            # Reboot if there are more than 5 warning and above events
+            if self.warning_and_above_count > 5:
+                os._exit(1)
         except Exception as e:
             # Catch and print any exception that occurs while sending log to Discord
             print(f'Error sending log message: {e}')

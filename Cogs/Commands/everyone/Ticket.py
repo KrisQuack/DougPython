@@ -1,4 +1,5 @@
 import io
+import logging
 import sys
 import aiohttp
 import asyncio
@@ -20,6 +21,7 @@ class Ticket(commands.GroupCog, name="ticket"):
     @app_commands.command(name="close", description="Close a ticket")
     @app_commands.guild_only()
     async def close(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         async def fetch_attachment(session, url):
             async with session.get(url) as resp:
                 return await resp.read()
@@ -31,7 +33,7 @@ class Ticket(commands.GroupCog, name="ticket"):
         if ticketChannel.category_id == ticketCategory.id:
             ticketChat = [msg async for msg in ticketChannel.history(limit=sys.maxsize)]
             ticketChat.reverse()
-            ticketString = "".join([f"{msg.author.display_name}: {msg.content}\n" for msg in ticketChat])
+            ticketString = "".join([f"{msg.author.display_name}{' (mod)' if msg.author.guild_permissions.moderate_members else ''}: {msg.content}\n" for msg in ticketChat])
 
             all_attachments = []
             mentioned_users = {}
@@ -41,12 +43,12 @@ class Ticket(commands.GroupCog, name="ticket"):
                     mentioned_users[msg.author.id] = msg.author.display_name
                     for attachment in msg.attachments:
                         tasks.append(fetch_attachment(session, attachment.url))
-
                 all_attachments = await asyncio.gather(*tasks)
 
             mention_list = "\n".join(
                 [f"{display_name} ({user_id})" for user_id, display_name in mentioned_users.items()])
-            message = f"Closed ticket: {ticketChannel.name}\nParticipants:\n{mention_list}"
+            embed = discord.Embed(title=f"Closed ticket: {ticketChannel.name}")
+            embed.add_field(name="Participants", value=mention_list, inline=False)
             # For each user in the ticket, send them a message with the ticket chat
             # Except for users with the mod role
             for user in ticketChannel.members:
@@ -55,14 +57,23 @@ class Ticket(commands.GroupCog, name="ticket"):
                 user_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
                               enumerate(all_attachments)]
                 user_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
-                await user.send(message, files=user_files)
+                await user.send(embed=embed, files=user_files)
 
             # Send the ticket chat to the close channel
             channel_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
                              enumerate(all_attachments)]
             channel_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
-            await closeChannel.send(message, files=channel_files)
-
+            # Attempt to make a mods summary
+            try:
+                summary = await self.client.openai.gpt48k(
+                    'You are a bot who is designed to take in a chat history from a discord mod ticket and provide a summary of the ticket. Please ensure the summary is brief, a maximum of 1000 characters',
+                    ticketString
+                )
+                embed.add_field(name="Summary", value=summary, inline=False)
+            except Exception as e:
+                logging.getLogger("Ticket").error(f'Failed to generate summary: {e}')
+            # Send the embed
+            await closeChannel.send(embed=embed, files=channel_files)
             await ticketChannel.delete()
         else:
             await interaction.response.send_message("This is not a ticket channel!", ephemeral=True)
@@ -115,9 +126,24 @@ class TicketModal(ui.Modal, title="Ticket"):
         # Create the ticket channel with the title as the name
         ticketChannel = await ticketCategory.create_text_channel(name=f'{self.name}')
         # Set the permissions for the ticket channel to include the user
-        await ticketChannel.set_permissions(interaction.user, read_messages=True, send_messages=True, view_channel=True)
+        guildMember = await interaction.guild.fetch_member(interaction.user.id)
+        await ticketChannel.set_permissions(guildMember, read_messages=True, send_messages=True, view_channel=True)
+        # Create the welcome embed
+        embed = discord.Embed(
+            title=f"Welcome to {ticketChannel.name}",
+            description=f"Thanks for opening a ticket, one of the team will be with you as soon as possible, we are however a small team spanning many timezones so please be patient. Thank you for understanding.",
+        )
         # Send the ticket welcome message and description
-        await ticketChannel.send(f'# Welcome to your ticket {interaction.user.mention}\n### Description\n{self.description}')
+        await ticketChannel.send(interaction.user.mention,embed=embed)
+        await ticketChannel.send(f".\n{interaction.user.display_name}{' (mod)' if interaction.user.guild_permissions.moderate_members else ''}: {self.description}")
+        # Double check the permissions
+        if not ticketChannel.permissions_for(guildMember).view_channel:
+            # Log that the permissions failed
+            logging.getLogger("Ticket").error(f'Failed to set permissions for {guildMember.display_name} ({guildMember.id}) in {ticketChannel.mention}')
+            # Send an error message
+            await interaction.response.send_message("Your ticket has been created however an error occurred while setting permissions. Please wait for a mod to provide access to the channel", ephemeral=True)
+            await ticketChannel.send('### Error assigning permissions, please add the users view access to the channel manually')
+            return
         # Send a success message
         await interaction.response.send_message(f"Ticket created: {ticketChannel.mention}", ephemeral=True)
 

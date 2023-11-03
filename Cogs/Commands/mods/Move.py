@@ -34,7 +34,7 @@ class Move(commands.Cog):
         try:
             message_to_move = await source_channel.fetch_message(message_id)
         except discord.NotFound:
-            await interaction.followup.send("Message not found")
+            await interaction.followup.send("Message not found, Ensure this is ran in the same channel as the message to move")
             return
 
         # Create or find a webhook in the target channel

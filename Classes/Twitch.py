@@ -117,6 +117,7 @@ class TwitchBot:
             await self.discordBot.settings.twitch_gambling_channel.send(embedMessage, embed=embed)
 
     async def on_channel_update(self, data: ChannelUpdateEvent):
+        logging.getLogger("Twitch").error(f"Channel Update\n{data.event}")
         # Create and embed of the channel update
         embed = Embed(title=f"Channel Update: {data.event.broadcaster_user_name}", color=Color.orange())
         embed.add_field(name="Title", value=data.event.title, inline=True)

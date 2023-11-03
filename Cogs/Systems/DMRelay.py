@@ -33,8 +33,23 @@ class DMRelay(commands.Cog):
             await dmChannel.send(embed=embed)
             for attach_embed in attachment_embeds:
                 await dmChannel.send(embed=attach_embed)
-            await message.channel.send("Message sent to the mods!")
+            await message.channel.send("Message sent to the mods!", delete_after=5)
 
+    @commands.Cog.listener()
+    async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        # Check if the message is from a DM channel and not from the bot itself
+        if isinstance(after.channel, discord.DMChannel) and after.author != self.client.user:
+            # Create the main embed
+            embed = Embed(title="DM Edited", color=Color.yellow())  # Using blue as a placeholder for color
+            embed.set_author(name=f"{after.author.name} ({after.author.id})",
+                             icon_url=after.author.display_avatar.url)
+            embed.timestamp = after.created_at
+            embed.add_field(name="Before", value=before.content, inline=False)
+            embed.add_field(name="After", value=after.content, inline=False)
+
+            # Send the main embed to the specified channel
+            dmChannel = self.client.settings.dm_receipt_channel
+            await dmChannel.send(embed=embed)
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(DMRelay(self))
