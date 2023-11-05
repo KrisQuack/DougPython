@@ -27,20 +27,24 @@ class Client(commands.Bot):
 
     async def on_guild_available(self, guild: discord.Guild):
         if self.first_run:
-            self.first_run = False
-            self.database = DatabaseConfig()
-            self.settings = BotSettings(self.database)
-            await self.settings.get_settings(self)
-            self.openai = GPT(
-                api_version=self.settings.dict['ai_api_version'],
-                azure_endpoint=self.settings.dict['ai_azure_endpoint'],
-                api_key=self.settings.dict['ai_api_key'],
-            )
-            await self.register_cogs()
-            self.tree.on_error = self.on_interaction_fail
-            synced = await self.tree.sync()
-            logging.getLogger("Main").info(f'Command tree synced: {len(synced)}')
-            await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
+            try:
+                self.first_run = False
+                self.database = DatabaseConfig()
+                self.settings = BotSettings(self.database)
+                await self.settings.get_settings(self)
+                self.openai = GPT(
+                    api_version=self.settings.dict['ai_api_version'],
+                    azure_endpoint=self.settings.dict['ai_azure_endpoint'],
+                    api_key=self.settings.dict['ai_api_key'],
+                )
+                await self.register_cogs()
+                self.tree.on_error = self.on_interaction_fail
+                synced = await self.tree.sync()
+                logging.getLogger("Main").info(f'Command tree synced: {len(synced)}')
+                await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
+            except Exception as e:
+                logging.getLogger("Main").error(f'Failed to initialize: {e}')
+                os._exit(1)
         logging.getLogger("Main").info(f'Guild available: {guild.name} ({guild.id})')
 
     async def send_interaction_embed(self, interaction: discord.Interaction, title: str, color: Color,

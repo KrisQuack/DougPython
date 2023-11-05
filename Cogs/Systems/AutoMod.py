@@ -49,7 +49,7 @@ class AutoMod(commands.Cog):
 
     async def DeezNutz(self, message: discord.Message):
         # Check if the message meets the regex
-        pattern =  r"((d+e+[zse]*)|(th+e+[zs]*)|(th[ozse]+))\s*(nut[zs]|testicle[sz])"
+        pattern =  r"((d[izse3]{2,})|(th[ozse3m]{2,}))\s*(nut|testicle)"
         if re.search(pattern, message.content, re.IGNORECASE):
             # Mark an eyes emote on the message
             await message.add_reaction('👀')

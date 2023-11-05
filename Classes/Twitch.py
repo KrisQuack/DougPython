@@ -119,7 +119,7 @@ class TwitchBot:
     async def on_channel_update(self, data: ChannelUpdateEvent):
         logging.getLogger("Twitch").error(f"Channel Update\n{data.event}")
         # Create and embed of the channel update
-        embed = Embed(title=f"Channel Update: {data.event.broadcaster_user_name}", color=Color.orange())
+        embed = Embed(title=f"Channel Update: {data.event.broadcaster_user_name}", color=Color.green())
         embed.add_field(name="Title", value=data.event.title, inline=True)
         embed.add_field(name="Category", value=data.event.category_name, inline=True)
         embed.add_field(name="Language", value=data.event.language, inline=True)

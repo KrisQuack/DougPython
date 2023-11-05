@@ -24,7 +24,7 @@ class LoggerHandler(logging.Handler):
             # Emit log record to terminal via stream handler
             self.stream_handler.emit(record)
             # Ignore logs containing "rate limited" to prevent spam
-            if "rate limited" in record.msg:
+            if "rate limited" in record.msg or "successfully RESUMED session" in record.msg:
                 return
             # Determine embed color based on log level
             if record.levelno == logging.ERROR:
@@ -49,8 +49,8 @@ class LoggerHandler(logging.Handler):
             embed.set_footer(text=record.asctime)  # Set footer to show log timestamp
             # Send log details to Discord via webhook
             self.webhook.send(content=message, embed=embed)
-            # Reboot if there are more than 5 warning and above events
-            if self.warning_and_above_count > 5:
+            # Reboot if there are more than 10 warning and above events
+            if self.warning_and_above_count > 10:
                 os._exit(1)
         except Exception as e:
             # Catch and print any exception that occurs while sending log to Discord
