@@ -5,11 +5,11 @@ from uuid import UUID
 from discord import Embed, Color
 from discord.ext import commands
 from twitchAPI.chat import Chat, EventData, ChatMessage
+from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.helper import first
 from twitchAPI.oauth import refresh_access_token
-from twitchAPI.pubsub import PubSub
-from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.object.eventsub import ChannelUpdateEvent, StreamOnlineEvent, StreamOfflineEvent
+from twitchAPI.pubsub import PubSub
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, ChatEvent
 
@@ -69,7 +69,8 @@ class TwitchBot:
             embedMessage = '<@&1080237787174948936>'
             embed.description = f"Prediction will be locked <t:{lock_timestamp}:R>"
             embed.add_field(name="Outcomes", value="\n".join(
-                [f"{color_emotes[outcome['color']]} {outcome['title']}" for outcome in prediction["event"]["outcomes"]]),
+                [f"{color_emotes[outcome['color']]} {outcome['title']}" for outcome in
+                 prediction["event"]["outcomes"]]),
                             inline=False)
 
         # Handling event-updated type
@@ -117,13 +118,10 @@ class TwitchBot:
             await self.discordBot.settings.twitch_gambling_channel.send(embedMessage, embed=embed)
 
     async def on_channel_update(self, data: ChannelUpdateEvent):
-        logging.getLogger("Twitch").error(f"Channel Update\n{data.event}")
         # Create and embed of the channel update
         embed = Embed(title=f"Channel Update: {data.event.broadcaster_user_name}", color=Color.green())
         embed.add_field(name="Title", value=data.event.title, inline=True)
         embed.add_field(name="Category", value=data.event.category_name, inline=True)
-        embed.add_field(name="Language", value=data.event.language, inline=True)
-        embed.add_field(name="Tags", value=','.join(data.event.content_classification_labels), inline=True)
         # Send the embed to the mod channel
         await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
 
@@ -178,12 +176,11 @@ class TwitchBot:
                 await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
     async def run(self):
-        settingDict = self.discordBot.settings.dict
-        self.twitch_client_id = settingDict["twitch_client_id"]
-        self.twitch_client_secret = settingDict["twitch_client_secret"]
-        self.twitch_bot_name = settingDict["twitch_bot_name"]
-        self.twitch_bot_refresh_token = settingDict["twitch_bot_refresh_token"]
-        self.twitch_channel_name = settingDict["twitch_channel_name"]
+        self.twitch_client_id = self.discordBot.settings.twitch_client_id
+        self.twitch_client_secret = self.discordBot.settings.twitch_client_secret
+        self.twitch_bot_name = self.discordBot.settings.twitch_bot_name
+        self.twitch_bot_refresh_token = self.discordBot.settings.twitch_bot_refresh_token
+        self.twitch_channel_name = self.discordBot.settings.twitch_channel_name
         # Set up the Twitch instance for the bot
         self.twitch_bot = await Twitch(self.twitch_client_id,
                                        self.twitch_client_secret)

@@ -16,7 +16,8 @@ class Typing(commands.Cog):
         channel="The channel to type in",
         seconds="The amount of seconds to type for"
     )
-    async def typing(self, interaction: discord.Interaction, channel: discord.TextChannel, seconds: int):
+    async def typing(self, interaction: discord.Interaction, channel: discord.TextChannel | discord.Thread,
+                     seconds: int):
         await interaction.response.defer(ephemeral=True)
         if (seconds > 300):
             await interaction.followup.send('You cannot make me type for more than 5 minutes!')

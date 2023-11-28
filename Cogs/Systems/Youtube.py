@@ -6,6 +6,8 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 
+from Classes.Database.BotSettings import get_settings, update_youtube_settings
+
 
 class CheckYoutube(commands.Cog):
     def __init__(self, client):
@@ -16,8 +18,9 @@ class CheckYoutube(commands.Cog):
     @tasks.loop(minutes=10)
     async def monitor(self):
         # Make sure the settings are loaded
-        await self.client.settings.get_settings(self.client)
-        for youtube_config in self.client.settings.dict['youtube_settings']:
+        self.client.settings = await get_settings(self.client)
+        youtube_settings = self.client.settings.youtube_settings
+        for youtube_config in youtube_settings:
             try:
                 async with self.session.get(
                         f'https://www.youtube.com/feeds/videos.xml?channel_id={youtube_config["youtube_id"]}') as r:
@@ -54,7 +57,8 @@ class CheckYoutube(commands.Cog):
                         mention_role = f'<@&{youtube_config["mention_role_id"]}>'
 
                         ## If is the vod channel and title does not contain VOD
-                        if youtube_config['youtube_id'] == 'UCzL0SBEypNk4slpzSbxo01g' and video_title.find('(VOD)') == -1:
+                        if youtube_config['youtube_id'] == 'UCzL0SBEypNk4slpzSbxo01g' and video_title.find(
+                                '(VOD)') == -1:
                             mention_role = f'<@&812501073289805884>'
 
                         await post_channel.send(f"{mention_role}", embed=embed)
@@ -64,7 +68,7 @@ class CheckYoutube(commands.Cog):
             except Exception as e:
                 logging.getLogger("YoutubeChannel").error(f"{youtube_config['id']}\n\n{e}")
 
-        await self.client.settings.update_settings()
+        await update_youtube_settings(youtube_settings)
 
     @monitor.before_loop
     async def before_monitor(self):

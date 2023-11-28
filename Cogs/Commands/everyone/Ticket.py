@@ -1,9 +1,9 @@
+import asyncio
 import io
 import logging
 import sys
-import aiohttp
-import asyncio
 
+import aiohttp
 import discord
 from discord import app_commands, ui
 from discord.ext import commands
@@ -22,6 +22,7 @@ class Ticket(commands.GroupCog, name="ticket"):
     @app_commands.guild_only()
     async def close(self, interaction: discord.Interaction):
         await interaction.response.defer()
+
         async def fetch_attachment(session, url):
             async with session.get(url) as resp:
                 return await resp.read()
@@ -33,7 +34,9 @@ class Ticket(commands.GroupCog, name="ticket"):
         if ticketChannel.category_id == ticketCategory.id:
             ticketChat = [msg async for msg in ticketChannel.history(limit=sys.maxsize)]
             ticketChat.reverse()
-            ticketString = "".join([f"{msg.author.display_name}{' (mod)' if msg.author.guild_permissions.moderate_members else ''}: {msg.content}\n" for msg in ticketChat])
+            ticketString = "".join([
+                f"{msg.author.display_name}{' (mod)' if msg.author.guild_permissions.moderate_members else ''}: {msg.clean_content}\n"
+                for msg in ticketChat])
 
             all_attachments = []
             mentioned_users = {}
@@ -112,13 +115,15 @@ class Ticket(commands.GroupCog, name="ticket"):
             # Send an error message
             await interaction.response.send_message("This is not a ticket channel!", ephemeral=True)
 
+
 class TicketModal(ui.Modal, title="Ticket"):
     def __init__(self, client: commands.Bot):
         super().__init__()
         self.client = client
 
     name = ui.TextInput(label="Name", placeholder="Enter a title for the ticket", max_length=32)
-    description = ui.TextInput(label="Description", placeholder="Enter a description for the ticket", style=discord.TextStyle.paragraph, max_length=1000)
+    description = ui.TextInput(label="Description", placeholder="Enter a description for the ticket",
+                               style=discord.TextStyle.paragraph, max_length=1000)
 
     async def on_submit(self, interaction: discord.Interaction):
         # Get the ticket category
@@ -134,18 +139,24 @@ class TicketModal(ui.Modal, title="Ticket"):
             description=f"Thanks for opening a ticket, one of the team will be with you as soon as possible, we are however a small team spanning many timezones so please be patient. Thank you for understanding.",
         )
         # Send the ticket welcome message and description
-        await ticketChannel.send(interaction.user.mention,embed=embed)
-        await ticketChannel.send(f".\n{interaction.user.display_name}{' (mod)' if interaction.user.guild_permissions.moderate_members else ''}: {self.description}")
+        await ticketChannel.send(interaction.user.mention, embed=embed)
+        await ticketChannel.send(
+            f".\n{interaction.user.display_name}{' (mod)' if interaction.user.guild_permissions.moderate_members else ''}: {self.description}")
         # Double check the permissions
         if not ticketChannel.permissions_for(guildMember).view_channel:
             # Log that the permissions failed
-            logging.getLogger("Ticket").error(f'Failed to set permissions for {guildMember.display_name} ({guildMember.id}) in {ticketChannel.mention}')
+            logging.getLogger("Ticket").error(
+                f'Failed to set permissions for {guildMember.display_name} ({guildMember.id}) in {ticketChannel.mention}')
             # Send an error message
-            await interaction.response.send_message("Your ticket has been created however an error occurred while setting permissions. Please wait for a mod to provide access to the channel", ephemeral=True)
-            await ticketChannel.send('### Error assigning permissions, please add the users view access to the channel manually')
+            await interaction.response.send_message(
+                "Your ticket has been created however an error occurred while setting permissions. Please wait for a mod to provide access to the channel",
+                ephemeral=True)
+            await ticketChannel.send(
+                '### Error assigning permissions, please add the users view access to the channel manually')
             return
         # Send a success message
         await interaction.response.send_message(f"Ticket created: {ticketChannel.mention}", ephemeral=True)
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(Ticket(self))

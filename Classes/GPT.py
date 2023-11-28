@@ -1,5 +1,6 @@
 from openai import AsyncAzureOpenAI
 
+
 class GPT:
     def __init__(self, api_version, azure_endpoint, api_key):
         self.client = AsyncAzureOpenAI(

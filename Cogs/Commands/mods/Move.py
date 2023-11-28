@@ -1,9 +1,9 @@
 import asyncio
 import io
+import os
+from urllib.parse import urlparse
 
 import aiohttp
-from urllib.parse import urlparse
-import os
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -34,7 +34,8 @@ class Move(commands.Cog):
         try:
             message_to_move = await source_channel.fetch_message(message_id)
         except discord.NotFound:
-            await interaction.followup.send("Message not found, Ensure this is ran in the same channel as the message to move")
+            await interaction.followup.send(
+                "Message not found, Ensure this is ran in the same channel as the message to move")
             return
 
         # Create or find a webhook in the target channel

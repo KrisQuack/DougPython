@@ -1,8 +1,7 @@
-import asyncio
-import logging
 from datetime import datetime, timedelta
 
 from discord import Member, Embed, Colour
+
 
 async def Timeout_User(member: Member, duration: timedelta, reason: str):
     # Get the timeout expiration time as unix time
@@ -28,6 +27,7 @@ async def Remove_Timeout_User(member: Member, reason: str):
     await member.send(embed=embed)
     # Remove the timeout
     await member.timeout(reason=reason)
+
 
 async def Ban_User(member: Member, reason: str, duration: timedelta):
     # Get the timeout expiration time as unix time

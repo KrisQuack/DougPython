@@ -51,5 +51,6 @@ class DMRelay(commands.Cog):
             dmChannel = self.client.settings.dm_receipt_channel
             await dmChannel.send(embed=embed)
 
+
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(DMRelay(self))

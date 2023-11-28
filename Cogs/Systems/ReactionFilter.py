@@ -21,7 +21,7 @@ class ReactionFilter(commands.Cog):
     async def reaction_filter(self, messageInt):
         try:
             # Assuming you have a list of whitelisted emote names
-            emote_whitelist = self.client.settings.dict['reaction_filter_emotes'][:]
+            emote_whitelist = self.client.settings.reaction_filter_emotes[:]
             guild = self.client.settings.guild
             guild_emotes = guild.emojis
             emote_whitelist += [emote.name for emote in guild_emotes]

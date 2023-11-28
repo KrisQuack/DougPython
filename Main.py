@@ -8,16 +8,15 @@ from discord import Embed, Color
 from discord.app_commands import AppCommandError
 from discord.ext import commands
 
-from Classes.Database.BotSettings import BotSettings
-from Classes.Database.DatabaseConfig import DatabaseConfig
-from LoggerHandler import LoggerHandler
-from Classes.Twitch import TwitchBot
+from Classes.Database.BotSettings import BotSettings, get_settings
 from Classes.GPT import GPT
+from Classes.Twitch import TwitchBot
+from LoggerHandler import LoggerHandler
 
 
 class Client(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('✵'), intents=discord.Intents.all(),
+        super().__init__(command_prefix='✵', intents=discord.Intents.all(),
                          help_command=None)
         # Define first run
         self.first_run = True
@@ -29,13 +28,11 @@ class Client(commands.Bot):
         if self.first_run:
             try:
                 self.first_run = False
-                self.database = DatabaseConfig()
-                self.settings = BotSettings(self.database)
-                await self.settings.get_settings(self)
+                self.settings: BotSettings = await get_settings(self)
                 self.openai = GPT(
-                    api_version=self.settings.dict['ai_api_version'],
-                    azure_endpoint=self.settings.dict['ai_azure_endpoint'],
-                    api_key=self.settings.dict['ai_api_key'],
+                    api_version=self.settings.ai_api_version,
+                    azure_endpoint=self.settings.ai_azure_endpoint,
+                    api_key=self.settings.ai_api_key,
                 )
                 await self.register_cogs()
                 self.tree.on_error = self.on_interaction_fail

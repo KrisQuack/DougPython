@@ -53,13 +53,15 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
                 continue
             # If the member is not a bot and does not have the new role
             if not member.bot and self.new_role not in member.roles:
-                #If the member has been in the server for more than 10 minutes
+                # If the member has been in the server for more than 10 minutes
                 if member.joined_at < ten_minutes_ago:
                     # Kick the member for not being verified
                     await member.kick(reason="Not verified")
                 else:
                     # Send the member a reminder to verify
-                    await self.onboarding.send(f"{member.mention} you have not yet verified and will be kicked in the next 5 minutes if not complete", delete_after=60)
+                    await self.onboarding.send(
+                        f"{member.mention} you have not yet verified and will be kicked in the next 5 minutes if not complete",
+                        delete_after=60)
             # If the member has been in the server for more than one week and has the new role
             elif member.joined_at < one_week_ago and self.new_role in member.roles:
                 # Assign the member role to the member
@@ -71,10 +73,10 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
         #     if message.id != 1158902786524721212:
         #         await message.delete()
 
-
     @check_verification.before_loop
     async def before_check_verification(self):
         await self.client.wait_until_ready()
+
 
 class VerifyButton(discord.ui.View):
     def __init__(self):

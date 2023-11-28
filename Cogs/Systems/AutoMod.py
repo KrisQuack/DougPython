@@ -6,9 +6,11 @@ from asyncio import sleep
 import discord
 from discord import TextChannel
 from discord.ext import commands
+from sqlalchemy.future import select
 
-from Classes.Database.Message import Message
+from Classes.Database.Message import query_messages, Message
 from Classes.DiscordFunctions.ModActions import Timeout_User
+
 
 class AutoMod(commands.Cog):
     def __init__(self, client):
@@ -49,12 +51,14 @@ class AutoMod(commands.Cog):
 
     async def DeezNutz(self, message: discord.Message):
         # Check if the message meets the regex
-        pattern =  r"((d[izse3]{2,})|(th[ozse3m]{2,}))\s*(nut|testicle)"
+        pattern = r"((d[izse3]{2,})|(th[ozse3m]{2,}))\s*(nut|testicle)"
         if re.search(pattern, message.content, re.IGNORECASE):
             # Mark an eyes emote on the message
             await message.add_reaction('👀')
             # Check their last two weeks of messages
-            messages = await Message(self.client.database).query_messages(f"SELECT m.content FROM m WHERE m.user_id = '{message.author.id}' AND m.created_at > '{(datetime.datetime.utcnow() - datetime.timedelta(weeks=4)).isoformat()}'")
+            messages = await query_messages(select(Message.content).where(Message.user_id == str(message.author.id),
+                                                                          Message.created_at > datetime.datetime.utcnow() - datetime.timedelta(
+                                                                              weeks=4)))
             messageList = [item async for item in messages]
             messageList = [item['content'] for item in messageList]
             # Count the number of times they've said deez nuts
@@ -66,11 +70,13 @@ class AutoMod(commands.Cog):
             lengths = [1, 3, 6, 12, 24, 48, 72, 144]
             if count > 0:
                 # Get the timeout length
-                time_index = min(count -1, len(lengths) - 1)
+                time_index = min(count - 1, len(lengths) - 1)
                 timeout_hours = lengths[time_index]
                 timeout = datetime.timedelta(hours=timeout_hours)
-                await Timeout_User(message.author, timeout, 'https://discord.com/channels/567141138021089308/880127379119415306/1119011566638080010')
-                logging.info(f"Timed out {message.author.display_name} for {timeout} for deez nuts\nMessage: {message.content}\n{message.jump_url}")
+                await Timeout_User(message.author, timeout,
+                                   'https://discord.com/channels/567141138021089308/880127379119415306/1119011566638080010')
+                logging.info(
+                    f"Timed out {message.author.display_name} for {timeout} for deez nuts\nMessage: {message.content}\n{message.jump_url}")
 
     async def ForumAutomod(self, thread: discord.Thread):
         if not isinstance(thread.parent, discord.ForumChannel):

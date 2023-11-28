@@ -19,7 +19,7 @@ class LoggerHandler(logging.Handler):
         try:
             message = None  # Initialize message variable for @mention in Discord
             # Ignore logs from Azure's HTTP logging policy
-            if record.name == "azure.core.pipeline.policies.http_logging_policy":
+            if record.name == "azure.core.pipeline.policies.http_logging_policy" or record.name == "sqlalchemy.engine.Engine":
                 return
             # Emit log record to terminal via stream handler
             self.stream_handler.emit(record)

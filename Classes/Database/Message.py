@@ -1,37 +1,84 @@
-from datetime import timezone
+import os
+from datetime import datetime, timezone
 
 import discord
-from azure.cosmos.aio import ContainerProxy
+from sqlalchemy import Column, String, JSON, DateTime, update
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.future import select
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-from Classes.Database.DatabaseConfig import DatabaseConfig
+DATABASE_URL = os.environ.get('DATABASE_URL')
+# Asynchronous database engine
+engine = create_async_engine(DATABASE_URL, echo=True)
+# Session maker bound to the engine
+async_session = sessionmaker(
+    engine, expire_on_commit=False, class_=AsyncSession
+)
+# Base class for declarative models
+Base = declarative_base()
 
 
-class Message:
-    def __init__(self, database_config: DatabaseConfig):
-        self.database = database_config
-        self.container: ContainerProxy = self.database.Messages
+# Define the Message model
+class Message(Base):
+    __tablename__ = 'messages'
+    id = Column(String, primary_key=True)
+    channel_id = Column(String)
+    user_id = Column(String)
+    content = Column(String)
+    attachments = Column(ARRAY(String))
+    created_at = Column(DateTime)
+    edits = Column(JSON)
+    updated_at = Column(DateTime)
+    deleted_at = Column(DateTime)
+    deleted_by = Column(String)
 
-    async def get_message(self, discMessage: discord.Message):
-        try:
-            # Try to get the message from the database
-            message = await self.container.read_item(str(discMessage.id), str(discMessage.id))
-            return message
-        except:
-            # If the user doesn't exist, insert them into the database
-            message_dict = {
-                'id': str(discMessage.id),
-                'channel_id': str(discMessage.channel.id),
-                'user_id': str(discMessage.author.id),
-                'content': discMessage.content,
-                'attachments': [attachment.url for attachment in discMessage.attachments],
-                'created_at': discMessage.created_at.astimezone(timezone.utc).isoformat(),
-                'edits': []
-            }
-            await self.container.upsert_item(body=message_dict)
-            return message_dict
 
-    async def update_message(self, message_id, update_dict):
-        await self.container.replace_item(item=message_id, body=update_dict)
+async def get_message(discMessage: discord.Message):
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(Message).where(Message.id == str(discMessage.id)))
+            message = result.scalars().first()
+            if message:
+                return message
+            else:
+                # If the message doesn't exist, insert it into the database
+                message = Message(
+                    id=str(discMessage.id),
+                    channel_id=str(discMessage.channel.id),
+                    user_id=str(discMessage.author.id),
+                    content=discMessage.content,
+                    attachments=[attachment.url for attachment in discMessage.attachments],
+                    created_at=discMessage.created_at.astimezone(timezone.utc).replace(tzinfo=None),
+                    edits=[]
+                )
+                session.add(message)
+                await session.commit()
+                return message
+    except Exception as e:
+        # Proper error handling goes here
+        print(f"An error occurred: {e}")
 
-    async def query_messages(self, query):
-        return self.container.query_items(query=query, continuation_token_limit=1)
+
+async def update_message(message):
+    async with async_session() as session:
+        # Update the message
+        await session.execute(
+            update(Message).
+            where(Message.id == message.id).
+            values(
+                content=message.content,
+                attachments=[attachment.url for attachment in message.attachments],
+                edits=message.edits,
+                updated_at=datetime.utcnow().astimezone(timezone.utc).replace(tzinfo=None),
+                deleted_at=message.deleted_at,
+            )
+        )
+        await session.commit()
+
+
+async def query_messages(orm_query):
+    async with async_session() as session:
+        result = await session.execute(orm_query)
+        messages = result.scalars().all()
+        return messages
