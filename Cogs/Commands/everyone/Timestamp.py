@@ -1,10 +1,10 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 import discord
 import pytz
-from discord import app_commands, CategoryChannel
+from discord import app_commands, CategoryChannel, EntityType, PrivacyLevel
 from discord.ext import commands, tasks
 
 
@@ -18,7 +18,7 @@ class Timestamp(commands.Cog):
     @app_commands.guild_only()
     @app_commands.describe(
         date="The date to convert to a timestamp. Format: `04/Jul/2000`",
-        time="The time to convert to a timestamp. Format: `18:00`",
+        time="The time to convert to a timestamp. Format: `12:00`",
         timezone="The time zone to use. Format: `America/Los_Angeles"
     )
     async def timestamp(self, interaction: discord.Interaction, date: str, time: str, timezone: str):
@@ -44,9 +44,8 @@ class Timestamp(commands.Cog):
         embed.add_field(name="Short Date", value=f"`<t:{parsed_unix_time}:f>` : <t:{parsed_unix_time}:f>", inline=False)
         embed.add_field(name="Long Time", value=f"`<t:{parsed_unix_time}:T>` : <t:{parsed_unix_time}:T>", inline=False)
         embed.add_field(name="Short Time", value=f"`<t:{parsed_unix_time}:t>` : <t:{parsed_unix_time}:t>", inline=False)
-
-        await interaction.response.send_message(content=f"<t:{parsed_unix_time}:t> <t:{parsed_unix_time}:R>",
-                                                embed=embed, ephemeral=True)
+        
+        await interaction.response.send_message(content=f"<t:{parsed_unix_time}:t> <t:{parsed_unix_time}:R>", embed=embed, ephemeral=True)
 
     @timestamp.autocomplete('timezone')
     async def timezones_autocomplete(
@@ -79,7 +78,7 @@ class Timestamp(commands.Cog):
             current: str,
     ) -> List[app_commands.Choice[str]]:
         return [
-            app_commands.Choice(name=datetime.utcnow().strftime('%H:%M'), value=datetime.utcnow().strftime('%H:%M'))]
+            app_commands.Choice(name='12:00', value='12:00')]
 
     @tasks.loop(minutes=1)
     async def update_time(self):

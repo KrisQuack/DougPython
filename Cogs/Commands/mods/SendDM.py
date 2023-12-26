@@ -31,7 +31,7 @@ class SendDM(commands.Cog):
         mod_embed.timestamp = interaction.created_at
 
         # Assuming you have a way to get the DM receipt channel (replace with your method)
-        await self.client.settings.dm_receipt_channel.send(embed=mod_embed)
+        await self.client.statics.dm_receipt_channel.send(embed=mod_embed)
         await interaction.response.send_message("DM Sent", ephemeral=True)
 
 

@@ -1,15 +1,12 @@
-import datetime
-import logging
 import re
 from asyncio import sleep
 
 import discord
 from discord import TextChannel
 from discord.ext import commands
-from sqlalchemy.future import select
 
-from Classes.Database.Message import query_messages, Message
 from Classes.DiscordFunctions.ModActions import Timeout_User
+import re
 
 
 class AutoMod(commands.Cog):
@@ -27,16 +24,14 @@ class AutoMod(commands.Cog):
         # features that a bot or mod can't trigger
         if message.author.bot or message.author.guild_permissions.moderate_members:
             return
-        # DeezNutz
-        await self.DeezNutz(message)
+        # AttachmentsAutomod
+        await self.AttachmentsAutomod(message)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after: discord.Message):
         # Check if the message is from a bot, mod or DM
         if after.guild is None or after.author.bot or after.author.guild_permissions.moderate_members:
             return
-        # DeezNutz
-        await self.DeezNutz(after)
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread):
@@ -48,35 +43,6 @@ class AutoMod(commands.Cog):
         if channel.type == discord.ChannelType.news:
             # publish message
             await message.publish()
-
-    async def DeezNutz(self, message: discord.Message):
-        # Check if the message meets the regex
-        pattern = r"((d[izse3]{2,})|(th[ozse3m]{2,}))\s*(nut|testicle)"
-        if re.search(pattern, message.content, re.IGNORECASE):
-            # Mark an eyes emote on the message
-            await message.add_reaction('👀')
-            # Check their last two weeks of messages
-            messages = await query_messages(select(Message.content).where(Message.user_id == str(message.author.id),
-                                                                          Message.created_at > datetime.datetime.utcnow() - datetime.timedelta(
-                                                                              weeks=4)))
-            messageList = [item async for item in messages]
-            messageList = [item['content'] for item in messageList]
-            # Count the number of times they've said deez nuts
-            count = 0
-            for msg in messageList:
-                if re.search(pattern, msg, re.IGNORECASE):
-                    count += 1
-            # Time them out for the amount of times they have said it
-            lengths = [1, 3, 6, 12, 24, 48, 72, 144]
-            if count > 0:
-                # Get the timeout length
-                time_index = min(count - 1, len(lengths) - 1)
-                timeout_hours = lengths[time_index]
-                timeout = datetime.timedelta(hours=timeout_hours)
-                await Timeout_User(message.author, timeout,
-                                   'https://discord.com/channels/567141138021089308/880127379119415306/1119011566638080010')
-                logging.info(
-                    f"Timed out {message.author.display_name} for {timeout} for deez nuts\nMessage: {message.content}\n{message.jump_url}")
 
     async def ForumAutomod(self, thread: discord.Thread):
         if not isinstance(thread.parent, discord.ForumChannel):
@@ -101,7 +67,30 @@ class AutoMod(commands.Cog):
             embed.set_author(name=thread.name, icon_url=thread.guild.icon.url)
             # Send the embed and pin it
             await thread.send(embed=embed)
-
-
+    
+    async def AttachmentsAutomod(self, message: discord.Message):
+        # Check if the message has attachments
+        if message.attachments:
+            for attachment in message.attachments:
+                # Check if the attachment file name ends with .zip, .exe, or .msi
+                if re.search(r"\.(zip|rar|7z|tar|gz|iso|dmg|exe|msi|apk)$", attachment.filename, re.IGNORECASE):
+                    # Alert the mod team
+                    embed = discord.Embed(
+                        title="Prohibited Attachment",
+                        description="A prohibited attachment has been detected and removed.",
+                        color=discord.Color.red(),
+                        url=message.jump_url,
+                        timestamp=message.created_at
+                    )
+                    embed.add_field(name="Attachments", value="\n".join([f"[{attachment.filename}]({attachment.url})" for attachment in message.attachments]))
+                    embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.display_avatar.url)
+                    channel = message.guild.get_channel(755155718214123600)
+                    await channel.send(embed=embed)
+                    # Notify the user
+                    await message.reply("Please do not upload zip files or executables, the mod team has no way to verify these are not malicious without investing significant time to investigate each upload.", delete_after=30)
+                    # Delete the message
+                    await message.delete()
+                    break
+                
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(AutoMod(self))

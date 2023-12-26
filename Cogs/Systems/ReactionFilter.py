@@ -21,12 +21,12 @@ class ReactionFilter(commands.Cog):
     async def reaction_filter(self, messageInt):
         try:
             # Assuming you have a list of whitelisted emote names
-            emote_whitelist = self.client.settings.reaction_filter_emotes[:]
-            guild = self.client.settings.guild
+            emote_whitelist = self.client.settings["reaction_filter_emotes"]
+            guild = self.client.statics.guild
             guild_emotes = guild.emojis
             emote_whitelist += [emote.name for emote in guild_emotes]
 
-            for channel in self.client.settings.reaction_filter_channels:
+            for channel in self.client.statics.reaction_filter_channels:
                 if channel is None:
                     continue
                 messages = [msg async for msg in channel.history(limit=messageInt)]

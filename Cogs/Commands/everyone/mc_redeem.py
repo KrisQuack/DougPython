@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from Classes.Database.User import User
+from Classes.Database.Members import get_member, update_member
 
 
 class Minecraft(commands.Cog):
@@ -18,9 +18,9 @@ class Minecraft(commands.Cog):
         random_part = ''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') for i in range(5))
         code = f'DMC-{random_part}'
         # Add the code to the database
-        dbUser = await User(self.client.database).get_user(interaction.user)
+        dbUser = await get_member(interaction.user, self.client.database)
         dbUser['mc_redeem'] = code
-        await User(self.client.database).update_user(str(interaction.user.id), dbUser)
+        await update_member(dbUser, self.client.database)
         # Send the code to the user
         await interaction.response.send_message(f"Your code is: **{code}**\nUse this in the Twitch redemption box",
                                                 ephemeral=True)

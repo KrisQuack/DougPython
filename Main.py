@@ -7,11 +7,11 @@ import discord
 from discord import Embed, Color
 from discord.app_commands import AppCommandError
 from discord.ext import commands
+from motor.motor_asyncio import AsyncIOMotorClient
 
-from Classes.Database.BotSettings import BotSettings, get_settings
 from Classes.GPT import GPT
 from Classes.Twitch import TwitchBot
-from LoggerHandler import LoggerHandler
+from Classes.LoggerHandler import LoggerHandler
 
 
 class Client(commands.Bot):
@@ -28,11 +28,13 @@ class Client(commands.Bot):
         if self.first_run:
             try:
                 self.first_run = False
-                self.settings: BotSettings = await get_settings(self)
+                self.mongo = AsyncIOMotorClient(os.environ.get('MONGO_URI'))
+                self.database = self.mongo.DougBot
+                await self.load_settings()
                 self.openai = GPT(
-                    api_version=self.settings.ai_api_version,
-                    azure_endpoint=self.settings.ai_azure_endpoint,
-                    api_key=self.settings.ai_api_key,
+                    api_version=self.settings['ai_api_version'],
+                    azure_endpoint=self.settings['ai_azure_endpoint'],
+                    api_key=self.settings['ai_api_key'],
                 )
                 await self.register_cogs()
                 self.tree.on_error = self.on_interaction_fail
@@ -40,9 +42,23 @@ class Client(commands.Bot):
                 logging.getLogger("Main").info(f'Command tree synced: {len(synced)}')
                 await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
             except Exception as e:
-                logging.getLogger("Main").error(f'Failed to initialize: {e}')
+                logging.getLogger("Main").error(f'Failed to initialize: {e.with_traceback()}')
                 os._exit(1)
         logging.getLogger("Main").info(f'Guild available: {guild.name} ({guild.id})')
+
+    async def load_settings(self):
+        self.settings = await self.database.BotSettings.find_one()
+        self.statics = type('', (), {})()
+        self.statics.dm_receipt_channel = client.get_channel(int(self.settings['dm_receipt_channel_id']))
+        self.statics.guild = client.get_guild(int(self.settings['guild_id']))
+        self.statics.log_blacklist_channels = [client.get_channel(int(channel_id)) for channel_id in
+                                            self.settings['log_blacklist_channels']]
+        self.statics.log_channel = client.get_channel(int(self.settings['log_channel_id']))
+        self.statics.reaction_filter_channels = [client.get_channel(int(channel_id)) for channel_id in
+                                                self.settings['reaction_filter_channels']]
+        self.statics.report_channel = client.get_channel(int(self.settings['report_channel_id']))
+        self.statics.twitch_gambling_channel = client.get_channel(int(self.settings['twitch_gambling_channel_id']))
+        self.statics.twitch_mod_channel = client.get_channel(int(self.settings['twitch_mod_channel_id']))
 
     async def send_interaction_embed(self, interaction: discord.Interaction, title: str, color: Color,
                                      error: AppCommandError = None):
@@ -66,13 +82,13 @@ class Client(commands.Bot):
         if interaction.type == discord.InteractionType.application_command and not interaction.command_failed:
             embed = await self.send_interaction_embed(interaction, f"Command Used: {interaction.data['name']}",
                                                       Color.green())
-            await self.settings.log_channel.send(embed=embed)
+            await self.statics.log_channel.send(embed=embed)
 
     async def on_interaction_fail(self, interaction: discord.Interaction, error: AppCommandError):
         await interaction.response.send_message(error, ephemeral=True)
         embed = await self.send_interaction_embed(interaction, f"Command Failed: {interaction.data['name']}",
                                                   Color.red(), error)
-        await self.settings.log_channel.send(embed=embed)
+        await self.statics.log_channel.send(embed=embed)
         formatted_traceback = traceback.format_exception(type(error), error, error.__traceback__)
         logging.getLogger("App_Command").error(
             f'Command {interaction.data["name"]} failed: {error}\n\n{formatted_traceback}')
@@ -93,6 +109,7 @@ class Client(commands.Bot):
                         loadedCogs.append(extension)
                     except Exception as e:
                         failedCogs.append(extension)
+                        logging.getLogger("Cogs").error(f'Failed to load extension {extension}: {e}')
         logging.getLogger("Cogs").info(f'Loaded ({len(loadedCogs)}): {", ".join(loadedCogs)}')
         logging.getLogger("Cogs").info(f'Failed ({len(failedCogs)}): {", ".join(failedCogs)}')
 
@@ -101,7 +118,7 @@ class Client(commands.Bot):
 logger = LoggerHandler(os.environ.get('LOGGER_WEBHOOK'))
 discord.utils.setup_logging(level=logging.INFO, handler=logger)
 # Log Python version as error to cause ping
-logging.error(f'Python version: {sys.version}')
+logging.info(f'Python version: {sys.version}')
 # Start the client
 client = Client()
 client.run(os.environ.get('TOKEN'), log_handler=None)

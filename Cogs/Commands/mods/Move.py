@@ -76,8 +76,7 @@ class Move(commands.Cog):
 
         # Send the message
         await webhook.send(**send_kwargs)
-
-        await message_to_move.reply(f"Your message has been moved to {channel.mention}")
+        await message_to_move.reply(f"Your message has been moved to {thread.mention if thread else channel.mention}")
         await message_to_move.delete()
         await interaction.followup.send("Message moved")
 

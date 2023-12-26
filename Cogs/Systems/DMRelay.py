@@ -29,11 +29,11 @@ class DMRelay(commands.Cog):
                 attachment_embeds.append(attach_embed)
 
             # Send the main embed and any attachment embeds to the specified channel
-            dmChannel = self.client.settings.dm_receipt_channel
+            dmChannel = self.client.statics.dm_receipt_channel
             await dmChannel.send(embed=embed)
             for attach_embed in attachment_embeds:
                 await dmChannel.send(embed=attach_embed)
-            await message.channel.send("Message sent to the mods!", delete_after=5)
+            await message.channel.send("This message has been sent to the mod team and they will respond when avaliable. Please only DM if you have serious questions or concerns. Abusing this service will result in removal from the server", delete_after=30)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
@@ -48,7 +48,7 @@ class DMRelay(commands.Cog):
             embed.add_field(name="After", value=after.content, inline=False)
 
             # Send the main embed to the specified channel
-            dmChannel = self.client.settings.dm_receipt_channel
+            dmChannel = self.client.statics.dm_receipt_channel
             await dmChannel.send(embed=embed)
 
 

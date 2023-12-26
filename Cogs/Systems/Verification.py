@@ -6,6 +6,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from Classes.DiscordFunctions.ModActions import Timeout_User
+
 
 class Verification(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -66,12 +68,12 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
             elif member.joined_at < one_week_ago and self.new_role in member.roles:
                 # Assign the member role to the member
                 await member.add_roles(self.member_role, reason="Graduated")
-        # # Check if there are any messages in the onboarding channel older than 10 minutes
-        # messages = [msg async for msg in self.onboarding.history(limit=100, after=ten_minutes_ago)]
-        # for message in messages:
-        #     # If it is not the verification message
-        #     if message.id != 1158902786524721212:
-        #         await message.delete()
+        # Check if there are any messages in the onboarding channel older than 10 minutes
+        messages = [msg async for msg in self.onboarding.history(limit=100, after=ten_minutes_ago)]
+        for message in messages:
+            # If it is not the verification message
+            if message.id != 1158902786524721212:
+                await message.delete()
 
     @check_verification.before_loop
     async def before_check_verification(self):
@@ -131,7 +133,14 @@ class VerifyAnswerView(discord.ui.View):
         if option == self.answer:
             role = interaction.guild.get_role(935020318408462398)
             await interaction.user.add_roles(role, reason="Verified")
-            await interaction.response.send_message("Correct! You are now freshman", ephemeral=True)
+            # If the user account is created less than one week, time out for the remainder of the week
+            safe_age = interaction.user.created_at + timedelta(weeks=1)
+            if safe_age > datetime.utcnow().replace(tzinfo=timezone.utc):
+                time_remaining = interaction.user.created_at + timedelta(weeks=1) - datetime.utcnow().replace(tzinfo=timezone.utc)
+                await Timeout_User(interaction.user, time_remaining, "Your account must be at least one week old to interact with the server")
+                await interaction.response.send_message("Correct! You are now freshman however you must wait untill your account is one week old to interact", ephemeral=True)
+            else:
+                await interaction.response.send_message("Correct! You are now freshman", ephemeral=True)
         else:
             await interaction.response.send_message("Incorrect!", ephemeral=True)
 

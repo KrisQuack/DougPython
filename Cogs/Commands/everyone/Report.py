@@ -75,7 +75,7 @@ class ReportModal(ui.Modal, title="Report"):
             embed.timestamp = interaction.created_at
             embeds.append(embed)
         try:
-            await self.client.settings.report_channel.send(embeds=embeds)
+            await self.client.statics.report_channel.send(embeds=embeds)
             await interaction.response.send_message("Your report has been sent to the mods.", ephemeral=True)
         except Exception:
             await interaction.response.send_message(

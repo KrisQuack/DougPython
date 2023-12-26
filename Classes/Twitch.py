@@ -2,21 +2,22 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from discord import Embed, Color
+from discord import Embed, Color, Guild, ScheduledEvent, EventStatus, EntityType, PrivacyLevel, Message
 from discord.ext import commands
+import pytz
 from twitchAPI.chat import Chat, EventData, ChatMessage
 from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.helper import first
 from twitchAPI.oauth import refresh_access_token
 from twitchAPI.object.eventsub import ChannelUpdateEvent, StreamOnlineEvent, StreamOfflineEvent
+from twitchAPI.object.api import Stream
 from twitchAPI.pubsub import PubSub
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, ChatEvent
 
-from Classes.Database.User import User
+from Classes.Database.Members import get_member_by_mc_redeem, update_member
 
-
-class PlaceholderThread:
+class MockThread:
     def __init__(self, id):
         self.id = id
 
@@ -29,13 +30,14 @@ class TwitchBot:
         self.channel_user = None
         self.bot_user = None
         self.chat = None
+        self.current_gamble_embed: Message = None
+        self.current_gamble_last_update: datetime = datetime.utcnow()
 
     async def on_prediction_event(self, uuid: UUID, data: dict):
         # Extracting event type and prediction data
         event_type = data["type"]
         prediction = data["data"]
         embed = None
-        embedMessage = None
         # Dict for color mapping
         color_emotes = {
             "BLUE": "🟦",
@@ -66,7 +68,6 @@ class TwitchBot:
             lock_timestamp = int(
                 (created_at + timedelta(seconds=prediction["event"]["prediction_window_seconds"])).timestamp())
             # Set the embed message
-            embedMessage = '<@&1080237787174948936>'
             embed.description = f"Prediction will be locked <t:{lock_timestamp}:R>"
             embed.add_field(name="Outcomes", value="\n".join(
                 [f"{color_emotes[outcome['color']]} {outcome['title']}" for outcome in
@@ -80,10 +81,12 @@ class TwitchBot:
             total_points = sum(outcome["total_points"] for outcome in prediction["event"]["outcomes"])
             total_users = sum(outcome["total_users"] for outcome in prediction["event"]["outcomes"])
 
-            # If the event status is LOCKED
-            if prediction["event"]["status"] == "LOCKED":
-                embed = create_embed(f"Prediction Locked: {predictionTitle}")
+            # If the event status is ONGOING
+            if prediction["event"]["status"] != "RESOLVED":
+                embed = create_embed(f"Prediction: {predictionTitle}")
                 for outcome in prediction["event"]["outcomes"]:
+                    if outcome["total_points"] == 0 or outcome["total_users"] == 0 or total_points == 0 or total_users == 0:
+                        continue
                     user_percentage = (outcome["total_users"] / total_users) * 100
                     points_percentage = (outcome["total_points"] / total_points) * 100
                     ratio = total_points / outcome["total_points"]
@@ -95,7 +98,7 @@ class TwitchBot:
                                     inline=False)
 
             # If the event status is RESOLVED
-            elif prediction["event"]["status"] == "RESOLVED":
+            else:
                 embed = create_embed(f"Prediction Resolved: {predictionTitle}")
                 winning_outcome_id = prediction["event"]["winning_outcome_id"]
                 total_points = sum(outcome["total_points"] for outcome in prediction["event"]["outcomes"])
@@ -113,9 +116,20 @@ class TwitchBot:
                                     value=f"Points: {outcome['total_points']} ({points_percentage:.2f}%)\nUsers: {outcome['total_users']} ({user_percentage:.2f}%)\nRatio: {ratio:.2f}\n**Top Predictors:**\n{top_predictors_str}",
                                     inline=False)
 
-        # If an embed was created, send it via webhook
+        # If an embed was created, send it to chat
         if embed:
-            await self.discordBot.settings.twitch_gambling_channel.send(embedMessage, embed=embed)
+            if self.current_gamble_embed:
+                # If the gamble is not locked, update only every 10 seconds
+                if prediction["event"]["status"] != "RESOLVED" and prediction["event"]["status"] != "LOCKED" and (datetime.utcnow() - self.current_gamble_last_update).seconds < 2:
+                    return
+                await self.current_gamble_embed.edit(embed=embed)
+                self.current_gamble_last_update = datetime.utcnow()
+            else:
+                self.current_gamble_embed = await self.discordBot.statics.twitch_gambling_channel.send('<@&1080237787174948936>', embed=embed)
+                
+        if prediction["event"]["status"] == "RESOLVED":
+            await self.discordBot.statics.twitch_gambling_channel.send(f'The gamble has been resolved {self.current_gamble_embed.jump_url}')
+            self.current_gamble_embed = None
 
     async def on_channel_update(self, data: ChannelUpdateEvent):
         # Create and embed of the channel update
@@ -123,19 +137,55 @@ class TwitchBot:
         embed.add_field(name="Title", value=data.event.title, inline=True)
         embed.add_field(name="Category", value=data.event.category_name, inline=True)
         # Send the embed to the mod channel
-        await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
+        await self.discordBot.statics.twitch_mod_channel.send(embed=embed)
+        # Check if there are any active events
+        guild: Guild = self.discordBot.statics.guild
+        events = await guild.fetch_scheduled_events()
+        # Now iterate over the events
+        for event in events:
+            event: ScheduledEvent = event
+            if event.status == EventStatus.active and event.location == 'https://twitch.tv/dougdoug' and event.creator.bot:
+                await event.edit(
+                    name=data.event.title,
+                    )
 
     async def on_stream_online(self, data: StreamOnlineEvent):
+        # Get stream details
+        streams = [stream async for stream in self.twitch_bot.get_streams(user_id=self.channel_user.id, first=1)]
+        stream: Stream = streams[0]
         # Create and embed of the channel update
         embed = Embed(title=f"Stream Online: {data.event.broadcaster_user_name}", color=Color.green())
         # Send the embed to the mod channel
-        await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
+        await self.discordBot.statics.twitch_mod_channel.send(embed=embed)
+        # Check if there are any pending events
+        guild: Guild = self.discordBot.statics.guild
+        # Create an event for the stream
+        event = await guild.create_scheduled_event(
+            name=stream.title,
+            start_time= datetime.now(tz=pytz.UTC) + timedelta(minutes=5),
+            entity_type = EntityType.external,
+            privacy_level= PrivacyLevel.guild_only,
+            location='https://twitch.tv/dougdoug',
+            end_time= datetime.now(tz=pytz.UTC) + timedelta(hours=24),
+            description=f'Twitch Stream: {stream.title}\nGame: {stream.game_name}\nhttps://twitch.tv/dougdoug',
+        )
+        await event.start()
+            
 
     async def on_stream_offline(self, data: StreamOfflineEvent):
         # Create and embed of the channel update
         embed = Embed(title=f"Stream Offline: {data.event.broadcaster_user_name}", color=Color.red())
         # Send the embed to the mod channel
-        await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
+        await self.discordBot.statics.twitch_mod_channel.send(embed=embed)
+        # Check if there are any active events
+        guild: Guild = self.discordBot.statics.guild
+        events = await guild.fetch_scheduled_events()
+        # Now iterate over the events
+        for event in events:
+            event: ScheduledEvent = event
+            if event.status == EventStatus.active and event.location == 'https://twitch.tv/dougdoug' and event.creator.bot:
+                await event.end()
+
 
     async def on_chat_ready(self, data: EventData):
         logging.getLogger("Twitch").info('Chat is ready for work, joining channels')
@@ -149,10 +199,7 @@ class TwitchBot:
             await msg.reply("Let me sleep")
         if msg.text.startswith('DMC-'):
             try:
-                query = f"SELECT * FROM u WHERE u.mc_redeem = '{msg.text}'"
-                dbUserResult = await User(self.discordBot.database).query_users(query)
-                # Get the first result
-                dbUser: dict = [item async for item in dbUserResult][0]
+                dbUser = await get_member_by_mc_redeem(msg.text, self.discordBot.database)
                 dbUserID = dbUser['id']
                 if dbUser:
                     # Post embed for redemption
@@ -163,12 +210,12 @@ class TwitchBot:
                     embed.add_field(name="Discord ID", value=dbUserID, inline=True)
                     embed.add_field(name="Discord Mention", value=f"<@{dbUserID}>", inline=True)
                     # Send the embed to the mod channel
-                    await self.discordBot.settings.twitch_mod_channel.send(embed=embed)
+                    await self.discordBot.statics.twitch_mod_channel.send(embed=embed)
                     # respond to the user
                     await msg.reply(f"Successfully redeemed, please wait for a mod to check your info")
                     # Remove the code from the database
                     dbUser.pop('mc_redeem')
-                    await User(self.discordBot.database).update_user(dbUserID, dbUser)
+                    await update_member(dbUser, self.discordBot.database)
                 else:
                     raise Exception("Invalid code")
             except Exception as e:
@@ -176,11 +223,11 @@ class TwitchBot:
                 await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
     async def run(self):
-        self.twitch_client_id = self.discordBot.settings.twitch_client_id
-        self.twitch_client_secret = self.discordBot.settings.twitch_client_secret
-        self.twitch_bot_name = self.discordBot.settings.twitch_bot_name
-        self.twitch_bot_refresh_token = self.discordBot.settings.twitch_bot_refresh_token
-        self.twitch_channel_name = self.discordBot.settings.twitch_channel_name
+        self.twitch_client_id = self.discordBot.settings["twitch_client_id"]
+        self.twitch_client_secret = self.discordBot.settings["twitch_client_secret"]
+        self.twitch_bot_name = self.discordBot.settings["twitch_bot_name"]
+        self.twitch_bot_refresh_token = self.discordBot.settings["twitch_bot_refresh_token"]
+        self.twitch_channel_name = self.discordBot.settings["twitch_channel_name"]
         # Set up the Twitch instance for the bot
         self.twitch_bot = await Twitch(self.twitch_client_id,
                                        self.twitch_client_secret)
@@ -201,6 +248,7 @@ class TwitchBot:
         logging.getLogger("Twitch").info('Twitch PubSub listening')
         # Set up EventSub
         eventsub = EventSubWebsocket(self.twitch_bot, callback_loop=self.discordBot.loop)
+        eventsub.reconnect_delay_steps = [10,10,10,10,10,10,10]
         eventsub.start()
         await eventsub.listen_channel_update_v2(self.channel_user.id, self.on_channel_update)
         await eventsub.listen_stream_online(self.channel_user.id, self.on_stream_online)

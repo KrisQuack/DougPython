@@ -10,7 +10,6 @@ class Ping(commands.Cog):
         self.client = client
 
     @app_commands.command(name="ping", description="Check the bot's latency")
-    @app_commands.checks.has_permissions(moderate_members=True)
     @app_commands.guild_only()
     async def ping(self, interaction: discord.Interaction):
         # WebSocket latency

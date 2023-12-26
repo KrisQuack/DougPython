@@ -72,14 +72,14 @@ class Ticket(commands.GroupCog, name="ticket"):
                     'You are a bot who is designed to take in a chat history from a discord mod ticket and provide a summary of the ticket. Please ensure the summary is brief, a maximum of 1000 characters',
                     ticketString
                 )
-                embed.add_field(name="Summary", value=summary, inline=False)
+                embed.description = f"## Summary\n{summary}"
             except Exception as e:
                 logging.getLogger("Ticket").error(f'Failed to generate summary: {e}')
             # Send the embed
             await closeChannel.send(embed=embed, files=channel_files)
             await ticketChannel.delete()
         else:
-            await interaction.response.send_message("This is not a ticket channel!", ephemeral=True)
+            await interaction.followup.send("This is not a ticket channel!", ephemeral=True)
 
     @app_commands.command(name="add_user", description="Add a user to a ticket")
     @app_commands.guild_only()
@@ -126,10 +126,13 @@ class TicketModal(ui.Modal, title="Ticket"):
                                style=discord.TextStyle.paragraph, max_length=1000)
 
     async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         # Get the ticket category
         ticketCategory = self.client.get_channel(755181630305599488)
         # Create the ticket channel with the title as the name
         ticketChannel = await ticketCategory.create_text_channel(name=f'{self.name}')
+        # sleep for 1 second to allow the channel to be created
+        await asyncio.sleep(5)
         # Set the permissions for the ticket channel to include the user
         guildMember = await interaction.guild.fetch_member(interaction.user.id)
         await ticketChannel.set_permissions(guildMember, read_messages=True, send_messages=True, view_channel=True)
@@ -148,14 +151,14 @@ class TicketModal(ui.Modal, title="Ticket"):
             logging.getLogger("Ticket").error(
                 f'Failed to set permissions for {guildMember.display_name} ({guildMember.id}) in {ticketChannel.mention}')
             # Send an error message
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Your ticket has been created however an error occurred while setting permissions. Please wait for a mod to provide access to the channel",
                 ephemeral=True)
             await ticketChannel.send(
                 '### Error assigning permissions, please add the users view access to the channel manually')
             return
         # Send a success message
-        await interaction.response.send_message(f"Ticket created: {ticketChannel.mention}", ephemeral=True)
+        await interaction.followup.send(f"Ticket created: {ticketChannel.mention}", ephemeral=True)
 
 
 async def setup(self: commands.Bot) -> None:
