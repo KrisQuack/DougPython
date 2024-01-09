@@ -34,16 +34,35 @@ class Ticket(commands.GroupCog, name="ticket"):
         if ticketChannel.category_id == ticketCategory.id:
             ticketChat = [msg async for msg in ticketChannel.history(limit=sys.maxsize)]
             ticketChat.reverse()
-            ticketString = "".join([
-                f"{msg.author.display_name}{' (mod)' if msg.author.guild_permissions.moderate_members else ''}: {msg.clean_content}\n"
-                for msg in ticketChat])
-
+            ticketString = ""
+            for msg in ticketChat:
+                author_name = msg.author.display_name
+                if msg.author.guild_permissions.moderate_members:
+                    author_name += ' (mod)'
+                if msg.author.bot:
+                    author_name += ' (bot)'
+                content = msg.clean_content
+                if msg.embeds:
+                    content += "\n# Embed\n"
+                    for embed in msg.embeds:
+                        if embed.author:
+                            content += f"Author: {embed.author.name}\n"
+                        if embed.title:
+                            content += f"Title: {embed.title}\n"
+                        if embed.description:
+                            content += f"Description: {embed.description}\n"
+                        if embed.fields:
+                            for field in embed.fields:
+                                content += f"Field: {field.name}\nValue: {field.value}\n"
+                ticketString += f"{author_name}: {content}\n"
+                
             all_attachments = []
             mentioned_users = {}
             async with aiohttp.ClientSession() as session:
                 tasks = []
                 for msg in ticketChat:
-                    mentioned_users[msg.author.id] = msg.author.display_name
+                    if not msg.author.bot:
+                        mentioned_users[msg.author.id] = msg.author.display_name
                     for attachment in msg.attachments:
                         tasks.append(fetch_attachment(session, attachment.url))
                 all_attachments = await asyncio.gather(*tasks)
