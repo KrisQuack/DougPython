@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sys
 import time
@@ -14,6 +15,8 @@ class AuditLog(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
         self.sync_database.start()
+        self.send_logs.start()
+        self.log_buffer = []
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -21,7 +24,7 @@ class AuditLog(commands.Cog):
         embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
         accountAge = datetime.now(timezone.utc) - member.created_at.astimezone(timezone.utc)
         embed.add_field(name="Account Age", value=f"{accountAge.days} days", inline=False)
-        await self.client.statics.log_channel.send(embed=embed)
+        self.log_buffer.append(embed)
         #OLD DB#
         await get_member(member, self.client.database)
 
@@ -29,7 +32,7 @@ class AuditLog(commands.Cog):
     async def on_member_remove(self, member: discord.Member):
         embed = Embed(title=f"User Left", color=Color.red())
         embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
-        await self.client.statics.log_channel.send(embed=embed)
+        self.log_buffer.append(embed)
         #OLD DB#
         # Check if the member was kicked or banned
         reason = "Left"
@@ -64,7 +67,7 @@ class AuditLog(commands.Cog):
                 embed.add_field(name="Roles Removed", value=", ".join([role.mention for role in removed_roles]))
         embed.set_author(name=f"{after.name} ({after.id})", icon_url=after.display_avatar.url)
         if embed.fields:
-            await self.client.statics.log_channel.send(embed=embed)
+            self.log_buffer.append(embed)
             
         # Get the user from the database
         user_dict = await get_member(after, self.client.database)
@@ -132,7 +135,8 @@ class AuditLog(commands.Cog):
             all_embeds.append(embed)
 
         # Send all embeds in one go
-        await self.client.statics.log_channel.send(embeds=all_embeds)
+        for embed in all_embeds:
+            self.log_buffer.append(embed)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -147,7 +151,7 @@ class AuditLog(commands.Cog):
         embed.add_field(name="Before", value=before.content[0:1000], inline=False)
         embed.add_field(name="After", value=after.content[0:1000], inline=False)
         embed.set_author(name=f"{before.author.name} ({before.author.id})", icon_url=before.author.display_avatar.url)
-        await self.client.statics.log_channel.send(embed=embed)
+        self.log_buffer.append(embed)
         
         
     @commands.Cog.listener()
@@ -168,7 +172,7 @@ class AuditLog(commands.Cog):
             message_dict['updated_at'] = message.edited_at.astimezone(timezone.utc)
 
             await update_message(message_dict, self.client.database)
-
+            
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload: RawMessageDeleteEvent):
         # Get the message from the database
@@ -182,50 +186,77 @@ class AuditLog(commands.Cog):
             message_dict['deleted_at'] = datetime.utcnow().astimezone(timezone.utc)
             await update_message(message_dict, self.client.database)
 
+    #########################
+    # Log Sending Scheduler #
+    #########################
+            
+    @tasks.loop(seconds=10)
+    async def send_logs(self):
+        while self.log_buffer:
+            # Take the first 10 embeds from the buffer
+            embeds_to_send = self.log_buffer[:10]
+            # Remove these embeds from the buffer
+            self.log_buffer = self.log_buffer[10:]
+            # Send the embeds
+            await self.client.statics.log_channel.send(embeds=embeds_to_send)
+
+
+    #######################
+    # Database Sync Tasks #
+    #######################
+    
+    async def sync_messages(self, channels):
+        message_count = 0
+        for channel in channels:
+            start_time = datetime.utcnow().astimezone(timezone.utc) - timedelta(hours=4)
+            end_time = datetime.utcnow().astimezone(timezone.utc)
+            messages = [msg async for msg in channel.history(limit=sys.maxsize, after=start_time)]
+            if messages:
+                dbMessages = await get_messages_by_channel(str(channel.id), self.client.database, start_time, end_time)
+                dbMessages = [dbMessage['_id'] for dbMessage in dbMessages]
+                for message in messages:
+                    if not message.author.bot and str(message.id) not in dbMessages:
+                        await get_Message(message, self.client.database)
+                        message_count += 1
+        return message_count
+
+    async def sync_members(self, guild):
+        members = [member async for member in guild.fetch_members(limit=sys.maxsize)]
+        dbMembers = await get_all_members(self.client.database)
+        dbMembers = [dbMember['_id'] for dbMember in dbMembers]
+
+        async def process_member(member):
+            if not member.bot and str(member.id) not in dbMembers:
+                await get_member(member, self.client.database)
+                return 1
+            return 0
+
+        member_counts = await asyncio.gather(*(process_member(member) for member in members))
+        member_count = sum(member_counts)
+        return member_count
+
     @tasks.loop(hours=3)
     async def sync_database(self):
         sync_start_time = time.time()
         guild: discord.Guild = self.client.statics.guild
-        # Sync all channels and messages
         channels = guild.text_channels + list(guild.threads) + guild.voice_channels
-        message_count = 0
-        for channel in channels:
-            # Get all messages in channel from the last 4 hours
-            start_time = datetime.utcnow().astimezone(timezone.utc) - timedelta(hours=4)
-            end_time = datetime.utcnow().astimezone(timezone.utc)
-            messages = [msg async for msg in channel.history(limit=sys.maxsize, after=start_time)]
-            if (len(messages) != 0):
-                # Get all messages in database
-                dbMessages = await get_messages_by_channel(str(channel.id), self.client.database, start_time, end_time)
-                dbMessages = [dbMessage['_id'] for dbMessage in dbMessages]
-                # Loop through messages
-                for message in messages:
-                    # Check if message is in database
-                    if not message.author.bot and str(message.id) not in dbMessages:
-                        # If not, add it
-                        await get_Message(message, self.client.database)
-                        message_count += 1
-                        
-        # Sync all members
-        members = guild.fetch_members(limit=sys.maxsize)
-        members = [member async for member in members]
-        dbMembers = await get_all_members(self.client.database)
-        dbMembers = [dbMember['_id'] for dbMember in dbMembers]
-        member_count = 0
-        for member in members:
-            if not member.bot and str(member.id) not in dbMembers:
-                await get_member(member, self.client.database)
-                member_count += 1
-        # If any messages were added, log it
+
+        message_count = await self.sync_messages(channels)
+        member_count = await self.sync_members(guild)
+
         if message_count == 0 and member_count == 0:
-            logging.info(f'Database Synced {len(channels)} channels, took {round(time.time() - sync_start_time)} seconds')
+            logging.info(f'Database Synced {len(channels)} channels, took {round(time.time() - sync_start_time)-30} seconds')
         else:
-            logging.error(f'Database Synced {len(channels)} channels, took {round(time.time() - sync_start_time)} seconds\n'
-              f'Found {message_count} messages that were not in the database\n'
-              f'Found {member_count} members that were not in the database')
+            logging.error(f'Database Synced {len(channels)} channels, took {round(time.time() - sync_start_time)-30} seconds\n'
+                        f'Found {message_count} messages that were not in the database\n'
+                        f'Found {member_count} members that were not in the database')
 
     @sync_database.before_loop
     async def before_sync_database(self):
+        await self.client.wait_until_ready()
+
+    @send_logs.before_loop
+    async def before_send_logs(self):
         await self.client.wait_until_ready()
 
 async def setup(self: commands.Bot) -> None:
