@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
@@ -151,6 +152,7 @@ class TwitchBot:
 
     async def on_stream_online(self, data: StreamOnlineEvent):
         # Get stream details
+        await asyncio.sleep(5)
         streams = [stream async for stream in self.twitch_bot.get_streams(user_id=self.channel_user.id, first=1)]
         stream: Stream = streams[0]
         # Create and embed of the channel update
@@ -200,7 +202,7 @@ class TwitchBot:
         if msg.text.startswith('DMC-'):
             try:
                 dbUser = await get_member_by_mc_redeem(msg.text, self.discordBot.database)
-                dbUserID = dbUser['id']
+                dbUserID = dbUser['_id']
                 if dbUser:
                     # Post embed for redemption
                     embed = Embed(title=f"Minecraft Redemption: {msg.user.display_name}", color=Color.orange())

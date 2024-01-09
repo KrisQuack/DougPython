@@ -38,3 +38,8 @@ async def get_messages_by_channel(channel_id: str, database, start_time: Optiona
     messages = await cursor.to_list(length=None)
     
     return messages
+
+async def get_message_by_id(message_id: str, database):
+    collection = database.Messages
+    db_message = await collection.find_one({'_id': message_id})
+    return db_message

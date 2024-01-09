@@ -2,6 +2,7 @@
 .idea/
 .mypy_cache/
 .vscode/
+.conda/
 __pycache__/
 export/
 temp.py

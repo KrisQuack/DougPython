@@ -35,11 +35,13 @@ class TelegramLogging(logging.Handler):
                 return
 
             self.stream_handler.emit(record)
-
-            formatted_message = record.getMessage()
-            formatted_message = formatted_message.replace('<', '&lt;').replace('>', '&gt;')
-            formatted_message = f"<u><b>[{record.levelname}] Log Entry: {record.name}</b></u>\n<code>{formatted_message}</code>"
-            self.log_buffer.append(formatted_message)
+            
+            # If it is warning or above, send the log to telegram
+            if record.levelno >= logging.WARNING:
+                formatted_message = record.getMessage()
+                formatted_message = formatted_message.replace('<', '&lt;').replace('>', '&gt;')
+                formatted_message = f"<u><b>[{record.levelname}] Log Entry: {record.name}</b></u>\n<code>{formatted_message}</code>"
+                self.log_buffer.append(formatted_message)
         except Exception as e:
             print(f'Error sending log message: {e}')
             
@@ -53,16 +55,13 @@ class TelegramLogging(logging.Handler):
         
     async def log_sender(self):
         while True:
-            # If 10 seconds have passed since the last sent time and there are logs in the buffer
+            # If there is a log in the buffer
             if self.log_buffer:
-                # Join all the logs in the buffer into a single message
-                message = '\n\n'.join(self.log_buffer)
-                # Clear the log buffer
-                self.log_buffer = []
-                # Check for errors
-                if "ERROR" in message:
-                    message = f"⚠️⚠️⚠️⚠️⚠️⚠️\n{message}"
+                message = ''
+                # While the message is less than 4000 characters
+                while self.log_buffer and len(message + self.log_buffer[0]) <= 4000:
+                    # Add the next log to the message
+                    message += self.log_buffer.pop(0) + '\n\n'
                 # Send the message
                 await self.telegram_bot.send_message("5397498524", message, parse_mode='HTML')
-
-            await asyncio.sleep(10)  # Sleep for a while
+            await asyncio.sleep(10)

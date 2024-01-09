@@ -4,7 +4,7 @@ from discord import Member
 async def get_member(member: Member, database):
     collection = database.Members
     db_member = await collection.find_one({'_id': str(member.id)})
-    if db_member is None:
+    if db_member is None and hasattr(member, 'name'):
         # Insert new member
         db_member = {
             '_id': str(member.id),
