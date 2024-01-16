@@ -21,7 +21,6 @@ class Ticket(commands.GroupCog, name="ticket"):
     @app_commands.command(name="close", description="Close a ticket")
     @app_commands.guild_only()
     async def close(self, interaction: discord.Interaction):
-        await interaction.response.defer()
 
         async def fetch_attachment(session, url):
             async with session.get(url) as resp:
@@ -32,14 +31,15 @@ class Ticket(commands.GroupCog, name="ticket"):
         ticketChannel = interaction.channel
 
         if ticketChannel.category_id == ticketCategory.id:
+            await interaction.response.send_message("Ticket logs being generated and channel closing, you will recieve a DM shortly with this info", ephemeral=False)
             ticketChat = [msg async for msg in ticketChannel.history(limit=sys.maxsize)]
             ticketChat.reverse()
             ticketString = ""
             for msg in ticketChat:
                 author_name = msg.author.display_name
-                if msg.author.guild_permissions.moderate_members:
+                if isinstance(msg.author, discord.Member) and msg.author.guild_permissions.moderate_members:
                     author_name += ' (mod)'
-                if msg.author.bot:
+                if isinstance(msg.author, discord.Member) and msg.author.bot:
                     author_name += ' (bot)'
                 content = msg.clean_content
                 if msg.embeds:
@@ -74,13 +74,20 @@ class Ticket(commands.GroupCog, name="ticket"):
             # For each user in the ticket, send them a message with the ticket chat
             # Except for users with the mod role
             for user in ticketChannel.members:
-                if user.guild_permissions.moderate_members or user.bot:
-                    continue
-                user_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
-                              enumerate(all_attachments)]
-                user_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
-                await user.send(embed=embed, files=user_files)
-
+                try:
+                    if user.guild_permissions.moderate_members or user.bot:
+                        continue
+                    user_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
+                                enumerate(all_attachments)]
+                    user_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
+                    await user.send(embed=embed, files=user_files)
+                except Exception as e:
+                    # Edit the mention list to mark the DM failed
+                    mention_list = mention_list.replace(f"{user.display_name} ({user.id})", f"{user.display_name} ({user.id}) (DM failed)")
+            # Replace the mention list with the updated one
+            for field in embed.fields:
+                if field.name == "Participants":
+                    field.value = mention_list
             # Send the ticket chat to the close channel
             channel_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
                              enumerate(all_attachments)]

@@ -7,9 +7,11 @@ from datetime import datetime, timezone, timedelta
 import discord
 from discord import Color, Embed, RawMessageUpdateEvent, RawMessageDeleteEvent
 from discord.ext import commands, tasks
+from pytz import utc
 
 from Classes.Database.Members import get_member, update_member, get_all_members
-from Classes.Database.Messages import get_Message, update_message, get_messages_by_channel
+from Classes.Database.Messages import get_Message, update_message, get_messages_by_channel, get_message_by_id
+from Classes.DiscordFunctions.Conversions import snowflake_to_timestamp
 
 class AuditLog(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -207,9 +209,9 @@ class AuditLog(commands.Cog):
     
     async def sync_messages(self, channels):
         message_count = 0
+        start_time = datetime.utcnow().astimezone(timezone.utc) - timedelta(hours=4)
+        end_time = datetime.utcnow().astimezone(timezone.utc) + timedelta(minutes=5)
         for channel in channels:
-            start_time = datetime.utcnow().astimezone(timezone.utc) - timedelta(hours=4)
-            end_time = datetime.utcnow().astimezone(timezone.utc)
             messages = [msg async for msg in channel.history(limit=sys.maxsize, after=start_time)]
             if messages:
                 dbMessages = await get_messages_by_channel(str(channel.id), self.client.database, start_time, end_time)
@@ -220,8 +222,7 @@ class AuditLog(commands.Cog):
                         message_count += 1
         return message_count
 
-    async def sync_members(self, guild):
-        members = [member async for member in guild.fetch_members(limit=sys.maxsize)]
+    async def sync_members(self, members):
         dbMembers = await get_all_members(self.client.database)
         dbMembers = [dbMember['_id'] for dbMember in dbMembers]
 
@@ -237,19 +238,40 @@ class AuditLog(commands.Cog):
 
     @tasks.loop(hours=3)
     async def sync_database(self):
+        logging.getLogger('AuditLog').info("Starting Database Sync")
+        response = ""
+        response += f"Database Sync Started\n"
         sync_start_time = time.time()
         guild: discord.Guild = self.client.statics.guild
+        # members = [member async for member in guild.fetch_members(limit=sys.maxsize)]
+        members = guild.members
+        response += f"{round(time.time() - sync_start_time)}: Found {len(members)} members\n"
+        
+        # For each channel, check it is active
         channels = guild.text_channels + list(guild.threads) + guild.voice_channels
+        response += f"{round(time.time() - sync_start_time)}: Found {len(channels)} channels\n"
+        cutoff = datetime.utcnow().astimezone(timezone.utc) - timedelta(hours=12)
+        for channel in channels:
+            # Check if it is a thread and if it is locked
+            if isinstance(channel, discord.Thread) and (channel.archived or channel.locked):
+                channels.remove(channel)
+                continue
+            if channel.last_message_id:
+                last_message_timestamp = snowflake_to_timestamp(channel.last_message_id)
+                if last_message_timestamp < cutoff:
+                    # Remove the channel from the list
+                    channels.remove(channel)
+        response += f"{round(time.time() - sync_start_time)}: Found {len(channels)} active channels\n"
 
         message_count = await self.sync_messages(channels)
-        member_count = await self.sync_members(guild)
+        response += f"{round(time.time() - sync_start_time)}: Processed {message_count} missing messages\n"
+        member_count = await self.sync_members(members)
+        response += f"{round(time.time() - sync_start_time)}: Processed {member_count} missing members\n"
 
         if message_count == 0 and member_count == 0:
-            logging.info(f'Database Synced {len(channels)} channels, took {round(time.time() - sync_start_time)-30} seconds')
+            logging.getLogger('AuditLog').info(response)
         else:
-            logging.error(f'Database Synced {len(channels)} channels, took {round(time.time() - sync_start_time)-30} seconds\n'
-                        f'Found {message_count} messages that were not in the database\n'
-                        f'Found {member_count} members that were not in the database')
+            logging.getLogger('AuditLog').error(response)
 
     @sync_database.before_loop
     async def before_sync_database(self):

@@ -16,6 +16,12 @@ from Classes.TelegramLogging import TelegramLogging
 
 class Client(commands.Bot):
     def __init__(self):
+        intents = discord.Intents.all()
+        intents.presences = False
+        intents.guild_typing = False
+        intents.dm_typing = False
+        intents.voice_states = False
+
         super().__init__(command_prefix='✵', intents=discord.Intents.all(),
                          help_command=None)
         # Define first run
@@ -48,7 +54,7 @@ class Client(commands.Bot):
                 logging.getLogger("Main").info(f'Command tree synced: {len(synced)}')
                 await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
             except Exception as e:
-                logging.getLogger("Main").error(f'Failed to initialize: {e.with_traceback()}')
+                logging.getLogger("Main").error(f'Failed to initialize: {e}\n{traceback.format_exc()}')
                 os._exit(1)
         logging.getLogger("Main").info(f'Guild available: {guild.name} ({guild.id})')
 

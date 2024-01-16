@@ -1,11 +1,7 @@
 import asyncio
 import logging
-import os
-import time
 from logging import StreamHandler
 import telegram
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 
 class TelegramLogging(logging.Handler):
@@ -17,15 +13,11 @@ class TelegramLogging(logging.Handler):
         
         # Setup telegram bot
         self.telegram_bot = telegram.Bot(telegram_key)
-        self.telegram_app = ApplicationBuilder().token(telegram_key).build()
         
         # Initialize the log buffer
         self.log_buffer = []
         
     async def run_polling(self):
-        # self.telegram_app.add_handler(CommandHandler("reboot", self.reboot_command))
-        # await self.telegram_app.updater.initialize()
-        # await self.telegram_app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
         asyncio.create_task(self.log_sender())
     
 
@@ -44,14 +36,6 @@ class TelegramLogging(logging.Handler):
                 self.log_buffer.append(formatted_message)
         except Exception as e:
             print(f'Error sending log message: {e}')
-            
-    async def reboot_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Restart the bot"""
-        if(update.message.from_user.id != 5397498524):
-            return
-        await update.message.reply_text("Rebooting...")
-        os._exit(1)
-        
         
     async def log_sender(self):
         while True:

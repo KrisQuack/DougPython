@@ -216,7 +216,7 @@ class TwitchBot:
                     # respond to the user
                     await msg.reply(f"Successfully redeemed, please wait for a mod to check your info")
                     # Remove the code from the database
-                    dbUser.pop('mc_redeem')
+                    dbUser['mc_redeem'] = None
                     await update_member(dbUser, self.discordBot.database)
                 else:
                     raise Exception("Invalid code")

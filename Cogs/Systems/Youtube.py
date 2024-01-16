@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+import traceback
 
 import discord
 from discord.ext import commands, tasks
@@ -13,13 +14,14 @@ class CheckYoutube(commands.Cog):
         self.api: Api = Api(api_key=self.client.settings['youtube_api'])
         self.monitor.start()  # Start the background task
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(minutes=5)
     async def monitor(self):
+        logging.getLogger('YoutubeChannel').info("Starting youtube channel check")
+        response = ""
         # Make sure the settings are loaded
         await self.client.load_settings()
         for youtube_config in self.client.settings['youtube_settings']:
             try:
-                
                 uploads_playlist_id = youtube_config.get('upload_playlist_id')
                 if not uploads_playlist_id:
                     channel_info = self.api.get_channel_info(channel_id=youtube_config["youtube_id"])
@@ -30,6 +32,7 @@ class CheckYoutube(commands.Cog):
                 video_id = videos.items[0].snippet.resourceId.videoId
                 
                 last_video_id = youtube_config['last_video_id']
+                response += f"\n{youtube_config['youtube_id']}: database: {last_video_id}, youtube: {video_id}"
                 if video_id == last_video_id or last_video_id is None:
                     continue
                 
@@ -46,6 +49,7 @@ class CheckYoutube(commands.Cog):
                 # Ignore streams
                 is_live = video_details.snippet.liveBroadcastContent
                 if is_live == 'upcoming' or is_live == 'live':
+                    response += f"\n{youtube_config['youtube_id']}: Skipping Live"
                     continue
                 
                 # Create the embed
@@ -59,21 +63,24 @@ class CheckYoutube(commands.Cog):
                 # Dont ping shorts
                 if duration < 60:
                     mention_role = ''
+                    response += f"\n{youtube_config['youtube_id']}: Skipping Short"
 
                 ## If is the vod channel and title does not contain VOD
                 if youtube_config['youtube_id'] == 'UCzL0SBEypNk4slpzSbxo01g' and video_title.find('(VOD)') == -1:
                     mention_role = f'<@&812501073289805884>'
 
                 await post_channel.send(f"{mention_role}", embed=embed)
+                response += f"\n{youtube_config['youtube_id']}: Posted"
 
                 # Update the last video ID
                 youtube_config['last_video_id'] = video_id
             except Exception as e:
-                logging.getLogger("YoutubeChannel").error(f"{youtube_config['id']}\n\n{e.with_traceback()}")
+                logging.getLogger("YoutubeChannel").error(f"{youtube_config['id']}\n\n{e}\n{traceback.format_exc()}")
 
         collection = self.client.database.BotSettings
         await collection.update_one({'_id': self.client.settings['_id']}, {'$set': {'youtube_settings': self.client.settings['youtube_settings']}})
         await self.client.load_settings()
+        logging.getLogger('YoutubeChannel').info(response)
 
     @monitor.before_loop
     async def before_monitor(self):

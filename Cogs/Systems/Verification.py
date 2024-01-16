@@ -48,6 +48,10 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
     @tasks.loop(minutes=5)
     async def check_verification(self):
         try:
+            logging.getLogger('Verification').info("Starting verification check")
+            graduated = 0
+            kicked = 0
+            deleted_messages = 0
             # Assign variables
             ten_minutes_ago = (datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=60))
             one_week_ago = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(weeks=1)
@@ -62,6 +66,7 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
                     if member.joined_at < ten_minutes_ago:
                         # Kick the member for not being verified
                         await member.kick(reason="Not verified")
+                        kicked += 1
                     else:
                         # Send the member a reminder to verify
                         await self.onboarding.send(
@@ -71,12 +76,15 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
                 elif member.joined_at < one_week_ago and self.new_role in member.roles:
                     # Assign the member role to the member
                     await member.add_roles(self.member_role, reason="Graduated")
+                    graduated += 1
             # Check if there are any messages in the onboarding channel older than 10 minutes
             messages = [msg async for msg in self.onboarding.history(limit=100, before=ten_minutes_ago)]
             for message in messages:
                 # If it is not the verification message
                 if message.id != 1158902786524721212:
                     await message.delete()
+                    deleted_messages += 1
+            logging.getLogger('Verification').info(f"Verification check complete: {graduated} graduated, {kicked} kicked, {deleted_messages} messages deleted")
         except Exception as e:
             logging.getLogger("Verification").error(f"Failed to check verification: {e}")
 
@@ -144,7 +152,7 @@ class VerifyAnswerView(discord.ui.View):
         dbUser = await get_member(interaction.user, interaction.client.database)
         answer = dbUser['verification']
         if option == answer:
-            dbUser.pop('verification')
+            dbUser['verification'] = None
             await update_member(dbUser, interaction.client.database)
             role = interaction.guild.get_role(935020318408462398)
             await interaction.user.add_roles(role, reason="Verified")
