@@ -10,7 +10,6 @@ from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from Classes.GPT import GPT
-from Classes.Twitch import TwitchBot
 from Classes.WebhookLogging import WebhookLogging
 
 
@@ -106,8 +105,6 @@ class Client(commands.Bot):
             f'Command {interaction.data["name"]} failed: {error}\n\n{formatted_traceback}')
 
     async def register_cogs(self):
-        # Start the Twitch bot
-        await TwitchBot(self).run()
         # Automatically load cogs from the 'Cogs/' folder and its subfolders
         loadedCogs = []
         failedCogs = []

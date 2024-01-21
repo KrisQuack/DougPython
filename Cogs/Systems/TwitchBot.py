@@ -18,14 +18,9 @@ from twitchAPI.type import AuthScope, ChatEvent
 
 from Classes.Database.Members import get_member_by_mc_redeem, update_member
 
-class MockThread:
-    def __init__(self, id):
-        self.id = id
-
-
-class TwitchBot:
-    def __init__(self, discordBot: commands.Bot):
-        self.discordBot = discordBot
+class TwitchBot(commands.Cog):
+    def __init__(self, client):
+        self.discordBot = client
         self.BOT_TARGET_SCOPES = [AuthScope.CHAT_READ, AuthScope.CHAT_EDIT, AuthScope.MODERATION_READ]
         self.twitch_bot = None
         self.channel_user = None
@@ -224,7 +219,7 @@ class TwitchBot:
                 logging.getLogger("Twitch").exception(f"Error redeeming code: {e}")
                 await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
-    async def run(self):
+    async def initialize(self):
         self.twitch_client_id = self.discordBot.settings["twitch_client_id"]
         self.twitch_client_secret = self.discordBot.settings["twitch_client_secret"]
         self.twitch_bot_name = self.discordBot.settings["twitch_bot_name"]
@@ -265,3 +260,8 @@ class TwitchBot:
         self.chat.register_event(ChatEvent.LEFT, self.on_chat_ready)
         self.chat.start()
         logging.getLogger("Twitch").info('Twitch Chat listening')
+
+async def setup(client):
+    twitchBot = TwitchBot(client)
+    await twitchBot.initialize()
+    await client.add_cog(twitchBot)
