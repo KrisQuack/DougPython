@@ -11,7 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from Classes.GPT import GPT
 from Classes.Twitch import TwitchBot
-from Classes.TelegramLogging import TelegramLogging
+from Classes.WebhookLogging import WebhookLogging
 
 
 class Client(commands.Bot):
@@ -38,11 +38,11 @@ class Client(commands.Bot):
                 self.database = self.mongo.DougBot
                 await self.load_settings()
                 # Create the logger
-                logger = TelegramLogging(self.settings['telegram_key'])
+                logger = WebhookLogging(self)
                 await logger.run_polling()
                 discord.utils.setup_logging(level=logging.INFO, handler=logger)
                 # Log Python version as error to cause ping
-                logging.info(f'Python version: {sys.version}')
+                logging.warning(f'Python version: {sys.version}')
                 self.openai = GPT(
                     api_version=self.settings['ai_api_version'],
                     azure_endpoint=self.settings['ai_azure_endpoint'],
