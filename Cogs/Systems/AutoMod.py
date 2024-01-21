@@ -21,17 +21,6 @@ class AutoMod(commands.Cog):
         # Features that a bot or mod can trigger
         # AutoPublish
         await self.AutoPublish(message)
-        
-        # Hack to notify me of mentions
-        for user in message.mentions:
-            if user.id == 130062174918934528:
-                logging.getLogger("Mention").warning(f"{message.channel.name}\n{message.author.display_name}: {message.clean_content}")
-        if message.reference:
-            reference = message.reference.cached_message or await message.channel.fetch_message(message.reference.message_id)
-            if reference.author.id == 130062174918934528:
-                logging.getLogger("Replied").warning(f"{message.channel.name}\n"
-                                                     f"{reference.author.display_name}: {reference.clean_content}\n\n"
-                                                     f"{message.author.display_name}: {message.clean_content}")
                 
         # features that a bot or mod can't trigger
         if message.author.bot or message.author.guild_permissions.moderate_members:
