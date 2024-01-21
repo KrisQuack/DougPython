@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from discord import Embed, Color, Guild, ScheduledEvent, EventStatus, EntityType, PrivacyLevel, Message
-from discord.ext import commands
+from discord.ext import commands, tasks
 import pytz
 from twitchAPI.chat import Chat, EventData, ChatMessage
 from twitchAPI.eventsub.websocket import EventSubWebsocket
@@ -238,18 +238,18 @@ class TwitchBot(commands.Cog):
                                                       refresh_token=bot_tokens[1])
         logging.getLogger("Twitch").info(f'Twitch Bot ID: {self.bot_user.id}')
         # Set up the pubsub
-        pubsub = PubSub(self.twitch_bot, self.discordBot.loop)
-        pubsub.start()
-        await pubsub.listen_undocumented_topic(f"predictions-channel-v1.{self.channel_user.id}",
+        self.pubsub = PubSub(self.twitch_bot, self.discordBot.loop)
+        self.pubsub.start()
+        await self.pubsub.listen_undocumented_topic(f"predictions-channel-v1.{self.channel_user.id}",
                                                self.on_prediction_event)
         logging.getLogger("Twitch").info('Twitch PubSub listening')
         # Set up EventSub
-        eventsub = EventSubWebsocket(self.twitch_bot, callback_loop=self.discordBot.loop)
-        eventsub.reconnect_delay_steps = [10,10,10,10,10,10,10]
-        eventsub.start()
-        await eventsub.listen_channel_update_v2(self.channel_user.id, self.on_channel_update)
-        await eventsub.listen_stream_online(self.channel_user.id, self.on_stream_online)
-        await eventsub.listen_stream_offline(self.channel_user.id, self.on_stream_offline)
+        self.eventsub = EventSubWebsocket(self.twitch_bot, callback_loop=self.discordBot.loop)
+        self.eventsub.reconnect_delay_steps = [10,10,10,10,10,10,10]
+        self.eventsub.start()
+        await self.eventsub.listen_channel_update_v2(self.channel_user.id, self.on_channel_update)
+        await self.eventsub.listen_stream_online(self.channel_user.id, self.on_stream_online)
+        await self.eventsub.listen_stream_offline(self.channel_user.id, self.on_stream_offline)
         logging.getLogger("Twitch").info('Twitch EventSub listening')
         # Set up the chat
         self.chat = await Chat(self.twitch_bot, callback_loop=self.discordBot.loop)
@@ -260,6 +260,31 @@ class TwitchBot(commands.Cog):
         self.chat.register_event(ChatEvent.LEFT, self.on_chat_ready)
         self.chat.start()
         logging.getLogger("Twitch").info('Twitch Chat listening')
+
+    @tasks.loop(minutes=5)
+    async def monitor(self):
+        # Check chat is connected
+        if not self.chat.is_in_room(self.twitch_channel_name):
+            # Reconnect
+            await self.chat.stop()
+            await self.chat.start()
+            logging.getLogger("Twitch").warning('Twitch Chat reconnected')
+        # Check pubsub is connected
+        if not self.pubsub.is_connected():
+            # Reconnect
+            await self.pubsub.stop()
+            await self.pubsub.start()
+            logging.getLogger("Twitch").warning('Twitch PubSub reconnected')
+        # Check eventsub is connected
+        if not self.eventsub.active_session.status == 'connected':
+            # Reconnect
+            await self.eventsub.stop()
+            await self.eventsub.start()
+            logging.getLogger("Twitch").warning('Twitch EventSub reconnected')
+
+    @monitor.before_loop
+    async def before_monitor(self):
+        await self.client.wait_until_ready()
 
 async def setup(client):
     twitchBot = TwitchBot(client)
