@@ -48,7 +48,6 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
     @tasks.loop(minutes=5)
     async def check_verification(self):
         try:
-            logging.getLogger('Verification').info("Starting verification check")
             graduated = 0
             kicked = 0
             deleted_messages = 0
@@ -84,7 +83,8 @@ Once you're all set, the realm of The Doug District is yours to explore.""",
                 if message.id != 1158902786524721212:
                     await message.delete()
                     deleted_messages += 1
-            logging.getLogger('Verification').info(f"Verification check complete: {graduated} graduated, {kicked} kicked, {deleted_messages} messages deleted")
+            if graduated > 0 or kicked > 0 or deleted_messages > 0:
+                logging.getLogger('Verification').info(f"Verification check complete: {graduated} graduated, {kicked} kicked, {deleted_messages} messages deleted")
         except Exception as e:
             logging.getLogger("Verification").error(f"Failed to check verification: {e}")
 
@@ -99,21 +99,24 @@ class VerifyButton(discord.ui.View):
 
     @discord.ui.button(label="Verify", style=discord.ButtonStyle.blurple, emoji="✔️", custom_id="verify")
     async def verify_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # List all JPEG files in the 'Data/Verification' directory
-        jpeg_files = [f for f in os.listdir('Data/Verification') if f.endswith('.jpg')]
-        # Randomly select one JPEG file from the list
-        selected_file = random.choice(jpeg_files)
-        # Extract the number (which serves as the answer) from the selected file's name
-        answer = int(os.path.splitext(selected_file)[0].split('_')[-1])
-        # Store the answer in the database
-        dbUser = await get_member(interaction.user, interaction.client.database)
-        dbUser['verification'] = answer
-        await update_member(dbUser, interaction.client.database)
-        # Create a Discord File object using the path to the selected JPEG file
-        image = discord.File(os.path.join('Data/Verification', selected_file), f'{interaction.user.id}.jpg')
-        # Send a message along with the randomly selected image and associated view for verification
-        await interaction.response.send_message("## How many bell peppers do you see in the image above?",
-                                                view=VerifyAnswerView(), ephemeral=True, file=image)
+        try:
+            # List all JPEG files in the 'Data/Verification' directory
+            jpeg_files = [f for f in os.listdir('Data/Verification') if f.endswith('.jpg')]
+            # Randomly select one JPEG file from the list
+            selected_file = random.choice(jpeg_files)
+            # Extract the number (which serves as the answer) from the selected file's name
+            answer = int(os.path.splitext(selected_file)[0].split('_')[-1])
+            # Store the answer in the database
+            dbUser = await get_member(interaction.user, interaction.client.database)
+            dbUser['verification'] = answer
+            await update_member(dbUser, interaction.client.database)
+            # Create a Discord File object using the path to the selected JPEG file
+            image = discord.File(os.path.join('Data/Verification', selected_file), f'{interaction.user.id}.jpg')
+            # Send a message along with the randomly selected image and associated view for verification
+            await interaction.response.send_message("## How many bell peppers do you see in the image above?",
+                                                    view=VerifyAnswerView(), ephemeral=True, file=image)
+        except Exception as e:
+            logging.getLogger("Verification").error(f"Failed to generate Verification for {interaction.user.name}: {e}")
 
 
 class VerifyAnswerButton(discord.ui.Button):
@@ -148,24 +151,27 @@ class VerifyAnswerView(discord.ui.View):
             self.add_item(button)
 
     async def respond(self, interaction: discord.Interaction, option: int):
-        # Get the answer from the database
-        dbUser = await get_member(interaction.user, interaction.client.database)
-        answer = dbUser['verification']
-        if option == answer:
-            dbUser['verification'] = None
-            await update_member(dbUser, interaction.client.database)
-            role = interaction.guild.get_role(935020318408462398)
-            await interaction.user.add_roles(role, reason="Verified")
-            # If the user account is created less than one week, time out for the remainder of the week
-            safe_age = interaction.user.created_at + timedelta(weeks=1)
-            if safe_age > datetime.utcnow().replace(tzinfo=timezone.utc):
-                time_remaining = interaction.user.created_at + timedelta(weeks=1) - datetime.utcnow().replace(tzinfo=timezone.utc)
-                await Timeout_User(interaction.user, time_remaining, "Your account must be at least one week old to interact with the server")
-                await interaction.response.send_message("Correct! You are now freshman however you must wait untill your account is one week old to interact", ephemeral=True)
+        try:
+            # Get the answer from the database
+            dbUser = await get_member(interaction.user, interaction.client.database)
+            answer = dbUser['verification']
+            if option == answer:
+                dbUser['verification'] = None
+                await update_member(dbUser, interaction.client.database)
+                role = interaction.guild.get_role(935020318408462398)
+                await interaction.user.add_roles(role, reason="Verified")
+                # If the user account is created less than one week, time out for the remainder of the week
+                safe_age = interaction.user.created_at + timedelta(weeks=1)
+                if safe_age > datetime.utcnow().replace(tzinfo=timezone.utc):
+                    time_remaining = interaction.user.created_at + timedelta(weeks=1) - datetime.utcnow().replace(tzinfo=timezone.utc)
+                    await Timeout_User(interaction.user, time_remaining, "Your account must be at least one week old to interact with the server")
+                    await interaction.response.send_message("Correct! You are now freshman however you must wait untill your account is one week old to interact", ephemeral=True)
+                else:
+                    await interaction.response.send_message("Correct! You are now freshman", ephemeral=True)
             else:
-                await interaction.response.send_message("Correct! You are now freshman", ephemeral=True)
-        else:
-            await interaction.response.send_message("Incorrect!", ephemeral=True)
+                await interaction.response.send_message("Incorrect!", ephemeral=True)
+        except Exception as e:
+            logging.getLogger("Verification").error(f"Failed to verify {interaction.user.name}: {e}")
 
 
 async def setup(self: commands.Bot) -> None:

@@ -70,6 +70,7 @@ class Client(commands.Bot):
         self.statics.report_channel = client.get_channel(int(self.settings['report_channel_id']))
         self.statics.twitch_gambling_channel = client.get_channel(int(self.settings['twitch_gambling_channel_id']))
         self.statics.twitch_mod_channel = client.get_channel(int(self.settings['twitch_mod_channel_id']))
+        self.statics.mod_channel = client.get_channel(int(self.settings['mod_channel_id']))
 
     async def send_interaction_embed(self, interaction: discord.Interaction, title: str, color: Color,
                                      error: AppCommandError = None):

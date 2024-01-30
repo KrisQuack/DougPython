@@ -260,31 +260,41 @@ class TwitchBot(commands.Cog):
         self.chat.register_event(ChatEvent.LEFT, self.on_chat_ready)
         self.chat.start()
         logging.getLogger("Twitch").info('Twitch Chat listening')
+        # Pause for the services to start
+        await asyncio.sleep(5)
+        # Start the monitor
+        self.monitor.start()
 
     @tasks.loop(minutes=5)
     async def monitor(self):
-        # Check chat is connected
-        if not self.chat.is_in_room(self.twitch_channel_name):
-            # Reconnect
-            await self.chat.stop()
-            await self.chat.start()
-            logging.getLogger("Twitch").warning('Twitch Chat reconnected')
-        # Check pubsub is connected
-        if not self.pubsub.is_connected():
-            # Reconnect
-            await self.pubsub.stop()
-            await self.pubsub.start()
-            logging.getLogger("Twitch").warning('Twitch PubSub reconnected')
-        # Check eventsub is connected
-        if not self.eventsub.active_session.status == 'connected':
-            # Reconnect
-            await self.eventsub.stop()
-            await self.eventsub.start()
-            logging.getLogger("Twitch").warning('Twitch EventSub reconnected')
+        try:
+            # Check chat is connected
+            if not self.chat.is_in_room(self.twitch_channel_name):
+                # Reconnect
+                if self.chat.__running:
+                    await self.chat.stop()
+                await self.chat.start()
+                logging.getLogger("Twitch").warning('Twitch Chat reconnected')
+            # Check pubsub is connected
+            if not self.pubsub.is_connected():
+                # Reconnect
+                if self.pubsub.__running:
+                    await self.pubsub.stop()
+                await self.pubsub.start()
+                logging.getLogger("Twitch").warning('Twitch PubSub reconnected')
+            # Check eventsub is connected
+            if not self.eventsub.active_session.status == 'connected':
+                # Reconnect
+                if self.eventsub.__running:
+                    await self.eventsub.stop()
+                await self.eventsub.start()
+                logging.getLogger("Twitch").warning('Twitch EventSub reconnected')
+        except Exception as e:
+            logging.getLogger("Twitch").exception(f"Error in monitor: {e}")
 
     @monitor.before_loop
     async def before_monitor(self):
-        await self.client.wait_until_ready()
+        await self.discordBot.wait_until_ready()
 
 async def setup(client):
     twitchBot = TwitchBot(client)

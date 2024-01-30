@@ -49,28 +49,31 @@ class AutoMod(commands.Cog):
             await message.publish()
 
     async def ForumAutomod(self, thread: discord.Thread):
-        if not isinstance(thread.parent, discord.ForumChannel):
-            return
-        # Pin the first message
-        await sleep(1)
-        # Get the first messages
-        messages = [msg async for msg in thread.history(limit=5)]
-        # Get the earliest message based on timestamp
-        msg = sorted(messages, key=lambda msg: msg.created_at)[0]
-        if msg:
-            await msg.pin()
-            # Create the embed
-            embed = discord.Embed(
-                title="Welcome to Your Thread!",
-                description=(
-                    "Server rules apply. Issues? Contact [mod team](https://discord.com/channels/567141138021089308/880127379119415306/1154847821514670160).\n"
-                    f"<@{thread.owner_id}>: You can Pin/Unpin posts. [How?](https://cdn.discordapp.com/attachments/886548334154760242/1135511848817545236/image.png)"
-                ),
-                color=discord.Color.orange()
-            )
-            embed.set_author(name=thread.name, icon_url=thread.guild.icon.url)
-            # Send the embed and pin it
-            await thread.send(embed=embed)
+        try:
+            if not isinstance(thread.parent, discord.ForumChannel):
+                return
+            # Pin the first message
+            await sleep(1)
+            # Get the first messages
+            messages = [msg async for msg in thread.history(limit=5)]
+            # Get the earliest message based on timestamp
+            msg = sorted(messages, key=lambda msg: msg.created_at)[0]
+            if msg:
+                await msg.pin()
+                # Create the embed
+                embed = discord.Embed(
+                    title="Welcome to Your Thread!",
+                    description=(
+                        "Server rules apply. Issues? Contact [mod team](https://discord.com/channels/567141138021089308/880127379119415306/1154847821514670160).\n"
+                        f"<@{thread.owner_id}>: You can Pin/Unpin posts. [How?](https://cdn.discordapp.com/attachments/886548334154760242/1135511848817545236/image.png)"
+                    ),
+                    color=discord.Color.orange()
+                )
+                embed.set_author(name=thread.name, icon_url=thread.guild.icon.url)
+                # Send the embed and pin it
+                await thread.send(embed=embed)
+        except Exception as e:
+            logging.getLogger("ForumAutomod").error(f"Failed to pin thread: {e}")
     
     async def AttachmentsAutomod(self, message: discord.Message):
         # Check if the message has attachments

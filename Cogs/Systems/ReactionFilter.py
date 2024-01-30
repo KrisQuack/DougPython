@@ -20,8 +20,6 @@ class ReactionFilter(commands.Cog):
 
     async def reaction_filter(self, messageInt):
         try:
-            logging.getLogger('ReactionFilter').info(f"Starting reaction filter with {messageInt} messages")
-            response = ""
             # Assuming you have a list of whitelisted emote names
             emote_whitelist = self.client.settings["reaction_filter_emotes"]
             guild = self.client.statics.guild
@@ -29,7 +27,8 @@ class ReactionFilter(commands.Cog):
             emote_whitelist += [emote.name for emote in guild_emotes]
 
             for channel in self.client.statics.reaction_filter_channels:
-                response += f"\n{channel.name}: "
+                any_removed = False
+                response = f"**{channel.name}**/n"
                 if channel is None:
                     continue
                 messages = [msg async for msg in channel.history(limit=messageInt)]
@@ -48,8 +47,10 @@ class ReactionFilter(commands.Cog):
                                 continue  # Skip this reaction
                             # Remove the reaction
                             await message.clear_reaction(reaction.emoji)
-                            response += f"({emoji_name} {len(users)}) "
-            logging.getLogger('ReactionFilter').info(f"Reaction filter complete {messageInt}: {response}")
+                            any_removed = True
+                            response += f"({emoji_name} {len(users)})"
+                if any_removed:
+                    logging.getLogger('ReactionFilter').info(f"Reaction filter complete ({messageInt} msg): {response}")
         except Exception as e:
             logging.getLogger("ReactionFilter").error(e)
 

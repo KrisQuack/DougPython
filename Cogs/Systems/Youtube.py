@@ -16,7 +16,6 @@ class CheckYoutube(commands.Cog):
 
     @tasks.loop(minutes=5)
     async def monitor(self):
-        logging.getLogger('YoutubeChannel').info("Starting youtube channel check")
         response = ""
         # Make sure the settings are loaded
         await self.client.load_settings()
@@ -32,9 +31,10 @@ class CheckYoutube(commands.Cog):
                 video_id = videos.items[0].snippet.resourceId.videoId
                 
                 last_video_id = youtube_config['last_video_id']
-                response += f"\n{youtube_config['youtube_id']}: database: {last_video_id}, youtube: {video_id}"
                 if video_id == last_video_id or last_video_id is None:
                     continue
+
+                response += f"\n{youtube_config['youtube_id']}\n- database: {last_video_id}\n- youtube: {video_id}"
                 
                 video_details = self.api.get_video_by_id(video_id=video_id).items[0]
                 channel_name = video_details.snippet.channelTitle
@@ -49,7 +49,7 @@ class CheckYoutube(commands.Cog):
                 # Ignore streams
                 is_live = video_details.snippet.liveBroadcastContent
                 if is_live == 'upcoming' or is_live == 'live':
-                    response += f"\n{youtube_config['youtube_id']}: Skipping Live"
+                    response += f"\n- Skipping Live"
                     continue
                 
                 # Create the embed
@@ -63,14 +63,14 @@ class CheckYoutube(commands.Cog):
                 # Dont ping shorts
                 if duration < 60:
                     mention_role = ''
-                    response += f"\n{youtube_config['youtube_id']}: Skipping Short"
+                    response += f"\n- Skipping Short"
 
                 ## If is the vod channel and title does not contain VOD
                 if youtube_config['youtube_id'] == 'UCzL0SBEypNk4slpzSbxo01g' and video_title.find('(VOD)') == -1:
                     mention_role = f'<@&812501073289805884>'
 
                 await post_channel.send(f"{mention_role}", embed=embed)
-                response += f"\n{youtube_config['youtube_id']}: Posted"
+                response += f"\n- Posted"
 
                 # Update the last video ID
                 youtube_config['last_video_id'] = video_id
@@ -80,7 +80,8 @@ class CheckYoutube(commands.Cog):
         collection = self.client.database.BotSettings
         await collection.update_one({'_id': self.client.settings['_id']}, {'$set': {'youtube_settings': self.client.settings['youtube_settings']}})
         await self.client.load_settings()
-        logging.getLogger('YoutubeChannel').info(response)
+        if response != "":
+            logging.getLogger('YoutubeChannel').info(response)
 
     @monitor.before_loop
     async def before_monitor(self):

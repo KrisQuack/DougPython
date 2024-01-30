@@ -39,12 +39,18 @@ class WebhookLogging(logging.Handler):
             # If there is a log in the buffer
             if self.embed_buffer and self.client.statics.log_channel:
                 # Send the first 10 embeds in a single message
-                embeds = self.embed_buffer[:10]
+                embeds_to_send = self.embed_buffer[:10]
                 self.embed_buffer = self.embed_buffer[10:]
                 message = ''
-                # If any of the embeds are red or gold, ping the mods
-                for embed in embeds:
-                    if embed.color == Color.red() or embed.color == Color.gold():
+                # Send the embeds
+                if len(embeds_to_send) == 10:
+                    if any(embed.color == Color.red() or embed.color == Color.gold() for embed in embeds_to_send):
                         message = f'<@&1072596548636135435>'
-                await self.client.statics.log_channel.send(message,embeds=embeds)
+                    await self.client.statics.log_channel.send(message,embeds=embeds_to_send)
+                else:
+                    for embed in embeds_to_send:
+                        if embed.color == Color.red() or embed.color == Color.gold():
+                            message = f'<@&1072596548636135435>'
+                        await self.client.statics.log_channel.send(message,embed=embed)
+                        message = ''
             await asyncio.sleep(10)
