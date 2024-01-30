@@ -63,10 +63,10 @@ class Client(commands.Bot):
         self.statics.dm_receipt_channel = client.get_channel(int(self.settings['dm_receipt_channel_id']))
         self.statics.guild = client.get_guild(int(self.settings['guild_id']))
         self.statics.log_blacklist_channels = [client.get_channel(int(channel_id)) for channel_id in
-                                            self.settings['log_blacklist_channels']]
+                                               self.settings['log_blacklist_channels']]
         self.statics.log_channel = client.get_channel(int(self.settings['log_channel_id']))
         self.statics.reaction_filter_channels = [client.get_channel(int(channel_id)) for channel_id in
-                                                self.settings['reaction_filter_channels']]
+                                                 self.settings['reaction_filter_channels']]
         self.statics.report_channel = client.get_channel(int(self.settings['report_channel_id']))
         self.statics.twitch_gambling_channel = client.get_channel(int(self.settings['twitch_gambling_channel_id']))
         self.statics.twitch_mod_channel = client.get_channel(int(self.settings['twitch_mod_channel_id']))
@@ -122,6 +122,7 @@ class Client(commands.Bot):
                         logging.getLogger("Cogs").error(f'Failed to load extension {extension}: {e}')
         logging.getLogger("Cogs").info(f'Loaded ({len(loadedCogs)}): {", ".join(loadedCogs)}')
         logging.getLogger("Cogs").info(f'Failed ({len(failedCogs)}): {", ".join(failedCogs)}')
+
 
 # Start the client
 client = Client()

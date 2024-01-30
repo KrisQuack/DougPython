@@ -1,5 +1,3 @@
-import asyncio
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -25,8 +23,8 @@ class Lockdown(commands.Cog):
                 return
         embed = discord.Embed(
             title=f"Lockdown: {channel.name}",
-            description=f"Use the buttons below to change the settings for this channel. Once you are done, click the Restore button to remove the automod and sync permissions where needed."+
-            "\n\nAutomod: This automod applies discords word lists for Severe Profranity, Insults & Slurs and Sexual Contenr along with our own list blocking letter emotes and more",
+            description=f"Use the buttons below to change the settings for this channel. Once you are done, click the Restore button to remove the automod and sync permissions where needed." +
+                        "\n\nAutomod: This automod applies discords word lists for Severe Profranity, Insults & Slurs and Sexual Contenr along with our own list blocking letter emotes and more",
             color=discord.Color.dark_purple()
         )
         embed.set_author(name=interaction.user.global_name, icon_url=interaction.user.avatar.url)
@@ -57,7 +55,10 @@ class Lockdown(commands.Cog):
         if synced:
             await interaction.followup.send(f'Lockdown Menu Generated: {message.jump_url}', ephemeral=True)
         else:
-            await interaction.followup.send(f'Lockdown Menu Generated: {message.jump_url}\n\n**Channel permissions not synced to category, Permission options disabled**', ephemeral=True)
+            await interaction.followup.send(
+                f'Lockdown Menu Generated: {message.jump_url}\n\n**Channel permissions not synced to category, Permission options disabled**',
+                ephemeral=True)
+
 
 class LockdownView(discord.ui.View):
     def __init__(self):
@@ -176,7 +177,8 @@ class LockdownView(discord.ui.View):
         await self.reload_buttons(interaction.message)
         await interaction.response.send_message("Updated", ephemeral=True)
 
-    @discord.ui.button(label="Sync permissions and restore channel", style=discord.ButtonStyle.blurple, custom_id="restore")
+    @discord.ui.button(label="Sync permissions and restore channel", style=discord.ButtonStyle.blurple,
+                       custom_id="restore")
     async def restore(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Get the embed from the message
         embed = interaction.message.embeds[0]

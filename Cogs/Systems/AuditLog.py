@@ -7,11 +7,11 @@ from datetime import datetime, timezone, timedelta
 import discord
 from discord import Color, Embed, RawMessageUpdateEvent, RawMessageDeleteEvent
 from discord.ext import commands, tasks
-from pytz import utc
 
 from Classes.Database.Members import get_member, update_member, get_all_members
-from Classes.Database.Messages import get_Message, update_message, get_messages_by_channel, get_message_by_id
+from Classes.Database.Messages import get_Message, update_message, get_messages_by_channel
 from Classes.DiscordFunctions.Conversions import snowflake_to_timestamp
+
 
 class AuditLog(commands.Cog):
     def __init__(self, client: commands.Bot):
@@ -28,7 +28,7 @@ class AuditLog(commands.Cog):
             accountAge = datetime.now(timezone.utc) - member.created_at.astimezone(timezone.utc)
             embed.add_field(name="Account Age", value=f"{accountAge.days} days", inline=False)
             self.log_buffer.append(embed)
-            #OLD DB#
+            # OLD DB#
             await get_member(member, self.client.database)
         except Exception as e:
             logging.getLogger("AuditLog").error(f"Failed on_member_join: {e}")
@@ -39,7 +39,7 @@ class AuditLog(commands.Cog):
             embed = Embed(title=f"User Left", color=Color.red())
             embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
             self.log_buffer.append(embed)
-            #OLD DB#
+            # OLD DB#
             # Check if the member was kicked or banned
             reason = "Left"
             async for entry in member.guild.audit_logs(limit=1):
@@ -51,7 +51,7 @@ class AuditLog(commands.Cog):
             if user_dict:
                 user_dict['left_at'] = member.joined_at.astimezone(timezone.utc)
                 user_dict['reason'] = reason
-                
+
                 await update_member(user_dict, self.client.database)
         except Exception as e:
             logging.getLogger("AuditLog").error(f"Failed on_member_remove: {e}")
@@ -77,7 +77,7 @@ class AuditLog(commands.Cog):
             embed.set_author(name=f"{after.name} ({after.id})", icon_url=after.display_avatar.url)
             if embed.fields:
                 self.log_buffer.append(embed)
-                
+
             # Get the user from the database
             user_dict = await get_member(after, self.client.database)
             # Update the users information
@@ -114,7 +114,7 @@ class AuditLog(commands.Cog):
         try:
             if message.author.bot:
                 return
-            
+
             await get_Message(message, self.client.database)
         except Exception as e:
             logging.getLogger("AuditLog").error(f"Failed on_message: {e}")
@@ -134,7 +134,7 @@ class AuditLog(commands.Cog):
             content = message.content if message.content else "Media/Embed"
             main_embed.add_field(name='Content', value=content[0:1000], inline=False)
             main_embed.set_author(name=f"{message.author.name} ({message.author.id})",
-                                icon_url=message.author.display_avatar.url)
+                                  icon_url=message.author.display_avatar.url)
 
             # List to hold all the embeds
             all_embeds = [main_embed]
@@ -168,12 +168,12 @@ class AuditLog(commands.Cog):
             embed.url = after.jump_url
             embed.add_field(name="Before", value=before.content[0:1000], inline=False)
             embed.add_field(name="After", value=after.content[0:1000], inline=False)
-            embed.set_author(name=f"{before.author.name} ({before.author.id})", icon_url=before.author.display_avatar.url)
+            embed.set_author(name=f"{before.author.name} ({before.author.id})",
+                             icon_url=before.author.display_avatar.url)
             self.log_buffer.append(embed)
         except Exception as e:
             logging.getLogger("AuditLog").error(f"Failed on_message_edit: {e}")
-        
-        
+
     @commands.Cog.listener()
     async def on_raw_message_edit(self, payload: RawMessageUpdateEvent):
         try:
@@ -195,7 +195,7 @@ class AuditLog(commands.Cog):
                 await update_message(message_dict, self.client.database)
         except Exception as e:
             logging.getLogger("AuditLog").error(f"Failed on_raw_message_edit: {e}")
-            
+
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload: RawMessageDeleteEvent):
         try:
@@ -204,7 +204,8 @@ class AuditLog(commands.Cog):
             message_dict = await get_Message(temp_message, self.client.database)
             if message_dict:
                 # Check if the message was deleted by a mod
-                async for entry in self.client.statics.guild.audit_logs(limit=1, action=discord.AuditLogAction.message_delete):
+                async for entry in self.client.statics.guild.audit_logs(limit=1,
+                                                                        action=discord.AuditLogAction.message_delete):
                     if str(entry.target.id) == message_dict['user_id']:
                         message_dict['deleted_by'] = str(entry.user.id)
                 message_dict['deleted_at'] = datetime.utcnow().astimezone(timezone.utc)
@@ -215,7 +216,7 @@ class AuditLog(commands.Cog):
     #########################
     # Log Sending Scheduler #
     #########################
-            
+
     @tasks.loop(seconds=10)
     async def send_logs(self):
         while self.log_buffer:
@@ -230,11 +231,10 @@ class AuditLog(commands.Cog):
                 for embed in embeds_to_send:
                     await self.client.statics.log_channel.send(embed=embed)
 
-
     #######################
     # Database Sync Tasks #
     #######################
-    
+
     async def sync_messages(self, channels):
         message_count = 0
         start_time = datetime.utcnow().astimezone(timezone.utc) - timedelta(hours=1)
@@ -271,7 +271,7 @@ class AuditLog(commands.Cog):
         guild: discord.Guild = self.client.statics.guild
         members = guild.members
         response += f"{round(time.time() - sync_start_time)}: Found {len(members)} members\n"
-        
+
         # For each channel, check it is active
         channels = guild.text_channels + list(guild.threads) + guild.voice_channels
         response += f"{round(time.time() - sync_start_time)}: Found {len(channels)} channels\n"
@@ -279,8 +279,8 @@ class AuditLog(commands.Cog):
         valid_channels = [
             channel for channel in channels
             if not (
-                isinstance(channel, discord.Thread) and (channel.archived or channel.locked)
-                or channel.last_message_id and snowflake_to_timestamp(channel.last_message_id) < cutoff
+                    isinstance(channel, discord.Thread) and (channel.archived or channel.locked)
+                    or channel.last_message_id and snowflake_to_timestamp(channel.last_message_id) < cutoff
             )
         ]
         response += f"{round(time.time() - sync_start_time)}: Found {len(valid_channels)} active channels\n"
@@ -300,6 +300,7 @@ class AuditLog(commands.Cog):
     @send_logs.before_loop
     async def before_send_logs(self):
         await self.client.wait_until_ready()
+
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(AuditLog(self))

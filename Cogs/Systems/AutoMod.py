@@ -1,12 +1,11 @@
-import re
 import logging
+import re
 from asyncio import sleep
 
 import discord
 from discord import TextChannel
 from discord.ext import commands
 
-import re
 
 class AutoMod(commands.Cog):
     def __init__(self, client):
@@ -17,19 +16,17 @@ class AutoMod(commands.Cog):
         # Check if it is a DM
         if message.guild is None:
             return
-        
+
         # Features that a bot or mod can trigger
         # AutoPublish
         await self.AutoPublish(message)
-                
+
         # features that a bot or mod can't trigger
         if message.author.bot or message.author.guild_permissions.moderate_members:
             return
-        
+
         # AttachmentsAutomod
         await self.AttachmentsAutomod(message)
-        
-        
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after: discord.Message):
@@ -74,7 +71,7 @@ class AutoMod(commands.Cog):
                 await thread.send(embed=embed)
         except Exception as e:
             logging.getLogger("ForumAutomod").error(f"Failed to pin thread: {e}")
-    
+
     async def AttachmentsAutomod(self, message: discord.Message):
         # Check if the message has attachments
         if message.attachments:
@@ -89,15 +86,20 @@ class AutoMod(commands.Cog):
                         url=message.jump_url,
                         timestamp=message.created_at
                     )
-                    embed.add_field(name="Attachments", value="\n".join([f"[{attachment.filename}]({attachment.url})" for attachment in message.attachments]))
-                    embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.display_avatar.url)
+                    embed.add_field(name="Attachments", value="\n".join(
+                        [f"[{attachment.filename}]({attachment.url})" for attachment in message.attachments]))
+                    embed.set_author(name=f"{message.author.name} ({message.author.id})",
+                                     icon_url=message.author.display_avatar.url)
                     channel = message.guild.get_channel(755155718214123600)
                     await channel.send(embed=embed)
                     # Notify the user
-                    await message.reply("Please do not upload zip files or executables, the mod team has no way to verify these are not malicious without investing significant time to investigate each upload.", delete_after=30)
+                    await message.reply(
+                        "Please do not upload zip files or executables, the mod team has no way to verify these are not malicious without investing significant time to investigate each upload.",
+                        delete_after=30)
                     # Delete the message
                     await message.delete()
                     break
-                
+
+
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(AutoMod(self))

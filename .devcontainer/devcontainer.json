@@ -1,4 +1,4 @@
 {
-    "name": "DougPython",
-    "image":  "python:3.12"
+  "name": "DougPython",
+  "image": "mcr.microsoft.com/vscode/devcontainers/python:3.12"
 }

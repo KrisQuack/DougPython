@@ -1,5 +1,7 @@
 from datetime import timezone
+
 from discord import Member
+
 
 async def get_member(member: Member, database):
     collection = database.Members
@@ -14,10 +16,11 @@ async def get_member(member: Member, database):
             'roles': [str(role.id) for role in member.roles],
             'joined_at': member.joined_at.astimezone(timezone.utc),
             'created_at': member.created_at.astimezone(timezone.utc),
-            'edits':[]
+            'edits': []
         }
         await collection.insert_one(db_member)
     return db_member
+
 
 async def update_member(db_member, database):
     collection = database.Members
@@ -28,6 +31,7 @@ async def get_member_by_mc_redeem(code: str, database):
     collection = database.Members
     db_member = await collection.find_one({'mc_redeem': code})
     return db_member
+
 
 async def get_all_members(database):
     collection = database.Members

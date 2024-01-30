@@ -1,10 +1,10 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 
 import discord
 import pytz
-from discord import app_commands, CategoryChannel, EntityType, PrivacyLevel
+from discord import app_commands, CategoryChannel
 from discord.ext import commands, tasks
 
 
@@ -44,8 +44,9 @@ class Timestamp(commands.Cog):
         embed.add_field(name="Short Date", value=f"`<t:{parsed_unix_time}:f>` : <t:{parsed_unix_time}:f>", inline=False)
         embed.add_field(name="Long Time", value=f"`<t:{parsed_unix_time}:T>` : <t:{parsed_unix_time}:T>", inline=False)
         embed.add_field(name="Short Time", value=f"`<t:{parsed_unix_time}:t>` : <t:{parsed_unix_time}:t>", inline=False)
-        
-        await interaction.response.send_message(content=f"<t:{parsed_unix_time}:t> <t:{parsed_unix_time}:R>", embed=embed, ephemeral=True)
+
+        await interaction.response.send_message(content=f"<t:{parsed_unix_time}:t> <t:{parsed_unix_time}:R>",
+                                                embed=embed, ephemeral=True)
 
     @timestamp.autocomplete('timezone')
     async def timezones_autocomplete(

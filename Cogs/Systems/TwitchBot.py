@@ -3,20 +3,21 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+import pytz
 from discord import Embed, Color, Guild, ScheduledEvent, EventStatus, EntityType, PrivacyLevel, Message
 from discord.ext import commands, tasks
-import pytz
 from twitchAPI.chat import Chat, EventData, ChatMessage
 from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.helper import first
 from twitchAPI.oauth import refresh_access_token
-from twitchAPI.object.eventsub import ChannelUpdateEvent, StreamOnlineEvent, StreamOfflineEvent
 from twitchAPI.object.api import Stream
+from twitchAPI.object.eventsub import ChannelUpdateEvent, StreamOnlineEvent, StreamOfflineEvent
 from twitchAPI.pubsub import PubSub
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, ChatEvent
 
 from Classes.Database.Members import get_member_by_mc_redeem, update_member
+
 
 class TwitchBot(commands.Cog):
     def __init__(self, client):
@@ -81,7 +82,8 @@ class TwitchBot(commands.Cog):
             if prediction["event"]["status"] != "RESOLVED":
                 embed = create_embed(f"Prediction: {predictionTitle}")
                 for outcome in prediction["event"]["outcomes"]:
-                    if outcome["total_points"] == 0 or outcome["total_users"] == 0 or total_points == 0 or total_users == 0:
+                    if outcome["total_points"] == 0 or outcome[
+                        "total_users"] == 0 or total_points == 0 or total_users == 0:
                         continue
                     user_percentage = (outcome["total_users"] / total_users) * 100
                     points_percentage = (outcome["total_points"] / total_points) * 100
@@ -116,15 +118,18 @@ class TwitchBot(commands.Cog):
         if embed:
             if self.current_gamble_embed:
                 # If the gamble is not locked, update only every 10 seconds
-                if prediction["event"]["status"] != "RESOLVED" and prediction["event"]["status"] != "LOCKED" and (datetime.utcnow() - self.current_gamble_last_update).seconds < 2:
+                if prediction["event"]["status"] != "RESOLVED" and prediction["event"]["status"] != "LOCKED" and (
+                        datetime.utcnow() - self.current_gamble_last_update).seconds < 2:
                     return
                 await self.current_gamble_embed.edit(embed=embed)
                 self.current_gamble_last_update = datetime.utcnow()
             else:
-                self.current_gamble_embed = await self.discordBot.statics.twitch_gambling_channel.send('<@&1080237787174948936>', embed=embed)
-                
+                self.current_gamble_embed = await self.discordBot.statics.twitch_gambling_channel.send(
+                    '<@&1080237787174948936>', embed=embed)
+
         if prediction["event"]["status"] == "RESOLVED":
-            await self.discordBot.statics.twitch_gambling_channel.send(f'The gamble has been resolved {self.current_gamble_embed.jump_url}')
+            await self.discordBot.statics.twitch_gambling_channel.send(
+                f'The gamble has been resolved {self.current_gamble_embed.jump_url}')
             self.current_gamble_embed = None
 
     async def on_channel_update(self, data: ChannelUpdateEvent):
@@ -143,7 +148,7 @@ class TwitchBot(commands.Cog):
             if event.status == EventStatus.active and event.location == 'https://twitch.tv/dougdoug' and event.creator.bot:
                 await event.edit(
                     name=data.event.title,
-                    )
+                )
 
     async def on_stream_online(self, data: StreamOnlineEvent):
         # Get stream details
@@ -159,15 +164,14 @@ class TwitchBot(commands.Cog):
         # Create an event for the stream
         event = await guild.create_scheduled_event(
             name=stream.title,
-            start_time= datetime.now(tz=pytz.UTC) + timedelta(minutes=5),
-            entity_type = EntityType.external,
-            privacy_level= PrivacyLevel.guild_only,
+            start_time=datetime.now(tz=pytz.UTC) + timedelta(minutes=5),
+            entity_type=EntityType.external,
+            privacy_level=PrivacyLevel.guild_only,
             location='https://twitch.tv/dougdoug',
-            end_time= datetime.now(tz=pytz.UTC) + timedelta(hours=24),
+            end_time=datetime.now(tz=pytz.UTC) + timedelta(hours=24),
             description=f'Twitch Stream: {stream.title}\nGame: {stream.game_name}\nhttps://twitch.tv/dougdoug',
         )
         await event.start()
-            
 
     async def on_stream_offline(self, data: StreamOfflineEvent):
         # Create and embed of the channel update
@@ -182,7 +186,6 @@ class TwitchBot(commands.Cog):
             event: ScheduledEvent = event
             if event.status == EventStatus.active and event.location == 'https://twitch.tv/dougdoug' and event.creator.bot:
                 await event.end()
-
 
     async def on_chat_ready(self, data: EventData):
         logging.getLogger("Twitch").info('Chat is ready for work, joining channels')
@@ -241,11 +244,11 @@ class TwitchBot(commands.Cog):
         self.pubsub = PubSub(self.twitch_bot, self.discordBot.loop)
         self.pubsub.start()
         await self.pubsub.listen_undocumented_topic(f"predictions-channel-v1.{self.channel_user.id}",
-                                               self.on_prediction_event)
+                                                    self.on_prediction_event)
         logging.getLogger("Twitch").info('Twitch PubSub listening')
         # Set up EventSub
         self.eventsub = EventSubWebsocket(self.twitch_bot, callback_loop=self.discordBot.loop)
-        self.eventsub.reconnect_delay_steps = [10,10,10,10,10,10,10]
+        self.eventsub.reconnect_delay_steps = [10, 10, 10, 10, 10, 10, 10]
         self.eventsub.start()
         await self.eventsub.listen_channel_update_v2(self.channel_user.id, self.on_channel_update)
         await self.eventsub.listen_stream_online(self.channel_user.id, self.on_stream_online)
@@ -295,6 +298,7 @@ class TwitchBot(commands.Cog):
     @monitor.before_loop
     async def before_monitor(self):
         await self.discordBot.wait_until_ready()
+
 
 async def setup(client):
     twitchBot = TwitchBot(client)

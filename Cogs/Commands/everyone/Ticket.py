@@ -31,7 +31,9 @@ class Ticket(commands.GroupCog, name="ticket"):
         ticketChannel = interaction.channel
 
         if ticketChannel.category_id == ticketCategory.id:
-            await interaction.response.send_message("Ticket logs being generated and channel closing, you will recieve a DM shortly with this info", ephemeral=False)
+            await interaction.response.send_message(
+                "Ticket logs being generated and channel closing, you will recieve a DM shortly with this info",
+                ephemeral=False)
             ticketChat = [msg async for msg in ticketChannel.history(limit=sys.maxsize)]
             ticketChat.reverse()
             ticketString = ""
@@ -55,7 +57,7 @@ class Ticket(commands.GroupCog, name="ticket"):
                             for field in embed.fields:
                                 content += f"Field: {field.name}\nValue: {field.value}\n"
                 ticketString += f"{author_name}: {content}\n"
-                
+
             all_attachments = []
             mentioned_users = {}
             async with aiohttp.ClientSession() as session:
@@ -78,12 +80,14 @@ class Ticket(commands.GroupCog, name="ticket"):
                     if user.guild_permissions.moderate_members or user.bot:
                         continue
                     user_files = [discord.File(io.BytesIO(a), filename=f"attachment_{i}.png") for i, a in
-                                enumerate(all_attachments)]
-                    user_files.append(discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
+                                  enumerate(all_attachments)]
+                    user_files.append(
+                        discord.File(io.BytesIO(ticketString.encode('utf-8')), f'{ticketChannel.name}.txt'))
                     await user.send(embed=embed, files=user_files)
                 except Exception as e:
                     # Edit the mention list to mark the DM failed
-                    mention_list = mention_list.replace(f"{user.display_name} ({user.id})", f"{user.display_name} ({user.id}) (DM failed)")
+                    mention_list = mention_list.replace(f"{user.display_name} ({user.id})",
+                                                        f"{user.display_name} ({user.id}) (DM failed)")
             # Replace the mention list with the updated one
             for field in embed.fields:
                 if field.name == "Participants":
