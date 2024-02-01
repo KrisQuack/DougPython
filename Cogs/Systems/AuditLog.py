@@ -156,7 +156,7 @@ class AuditLog(commands.Cog):
             logging.getLogger("AuditLog").error(f"Failed on_message_delete: {e}")
 
     @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
+    async def on_message_edit(self, before, after: discord.Message):
         try:
             if after.author.bot:
                 return
@@ -171,6 +171,16 @@ class AuditLog(commands.Cog):
             embed.set_author(name=f"{before.author.name} ({before.author.id})",
                              icon_url=before.author.display_avatar.url)
             self.log_buffer.append(embed)
+
+            # Update the message in the database
+            message_dict = await get_Message(after, self.client.database)
+
+            if after.edited_at:
+                edit = {'edited_at': after.edited_at.astimezone(timezone.utc), 'content': after.content}
+                message_dict.setdefault('edits', []).append(edit)
+                message_dict['updated_at'] = after.edited_at.astimezone(timezone.utc)
+
+                await update_message(message_dict, self.client.database)
         except Exception as e:
             logging.getLogger("AuditLog").error(f"Failed on_message_edit: {e}")
 
@@ -178,11 +188,10 @@ class AuditLog(commands.Cog):
     async def on_raw_message_edit(self, payload: RawMessageUpdateEvent):
         try:
             # Get the message from the server
-            message = payload.cached_message
-            if message is None:
-                channel = self.client.get_channel(payload.channel_id)
-                if channel is not None:
-                    message = await channel.fetch_message(payload.message_id)
+            if payload.cached_message is not None:
+                return
+            channel = self.client.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
             if message.author.bot:
                 return
             message_dict = await get_Message(message, self.client.database)

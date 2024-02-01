@@ -28,7 +28,7 @@ class ReactionFilter(commands.Cog):
 
             for channel in self.client.statics.reaction_filter_channels:
                 any_removed = False
-                response = f"**{channel.name}**/n"
+                response = f"**{channel.name}**\n"
                 if channel is None:
                     continue
                 messages = [msg async for msg in channel.history(limit=messageInt)]

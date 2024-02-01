@@ -23,8 +23,18 @@ class Lockdown(commands.Cog):
                 return
         embed = discord.Embed(
             title=f"Lockdown: {channel.name}",
-            description=f"Use the buttons below to change the settings for this channel. Once you are done, click the Restore button to remove the automod and sync permissions where needed." +
-                        "\n\nAutomod: This automod applies discords word lists for Severe Profranity, Insults & Slurs and Sexual Contenr along with our own list blocking letter emotes and more",
+            description="""
+This menu is now persistent, You can revisit it at any time by clicking it in the pins. You can toggle the buttons any time to change access. Once you are done with the menu you can click Restore to sync the channels permissions and remove the menu.
+
+**Strict Automod**: Applies discords over the top automod rules to the channel along side out own list of blocked emotes and words (including letters, numbers and commonly used combinations of offensive emotes)
+**Slowmode**: Sets the channel to a 30 second slowmode (Removes all slow mods when toggled off)
+**Ext. Emotes**: Removes the ability to use emotes from other servers
+**Ext. Stickers**: Removes the ability to use stickers from other servers
+**Reactions**: Removes the ability to react to messages
+**Embeds**: Removes the ability to embed links in chat
+**Attachments**: Removes the ability to send attachments in chat
+**Restore**: Restores the channel to its original permissions and removes the menu
+""",
             color=discord.Color.dark_purple()
         )
         embed.set_author(name=interaction.user.global_name, icon_url=interaction.user.avatar.url)
@@ -64,7 +74,7 @@ class LockdownView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="AutoMod Inactive", style=discord.ButtonStyle.red, custom_id="automod")
+    @discord.ui.button(label="Strict AutoMod Inactive", style=discord.ButtonStyle.red, custom_id="automod", row=1)
     async def automod(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Get the embed from the message
         channel_id = interaction.message.embeds[0].footer.text
@@ -91,7 +101,7 @@ class LockdownView(discord.ui.View):
         await self.reload_buttons(interaction.message)
         await interaction.response.send_message("Updated", ephemeral=True)
 
-    @discord.ui.button(label="Slowmode(30s) Inactive", style=discord.ButtonStyle.red, custom_id="slowmode")
+    @discord.ui.button(label="Slowmode(30s) Inactive", style=discord.ButtonStyle.red, custom_id="slowmode", row=1)
     async def slowmode(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Get the embed from the message
         channel_id = interaction.message.embeds[0].footer.text
@@ -105,7 +115,7 @@ class LockdownView(discord.ui.View):
         await self.reload_buttons(interaction.message)
         await interaction.response.send_message("Updated", ephemeral=True)
 
-    @discord.ui.button(label="Emotes Allowed", style=discord.ButtonStyle.green, custom_id="emotes")
+    @discord.ui.button(label="Ext. Emotes Allowed", style=discord.ButtonStyle.green, custom_id="emotes", row=2)
     async def emotes(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Get the embed from the message
         channel_id = interaction.message.embeds[0].footer.text
@@ -123,7 +133,7 @@ class LockdownView(discord.ui.View):
         await self.reload_buttons(interaction.message)
         await interaction.response.send_message("Updated", ephemeral=True)
 
-    @discord.ui.button(label="Stickers Allowed", style=discord.ButtonStyle.green, custom_id="stickers")
+    @discord.ui.button(label="Ext. Stickers Allowed", style=discord.ButtonStyle.green, custom_id="stickers", row=2)
     async def stickers(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Get the embed from the message
         channel_id = interaction.message.embeds[0].footer.text
@@ -141,7 +151,25 @@ class LockdownView(discord.ui.View):
         await self.reload_buttons(interaction.message)
         await interaction.response.send_message("Updated", ephemeral=True)
 
-    @discord.ui.button(label="Embeds Allowed", style=discord.ButtonStyle.green, custom_id="embeds")
+    @discord.ui.button(label="Reactions Allowed", style=discord.ButtonStyle.green, custom_id="reactions", row=2)
+    async def reactions(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Get the embed from the message
+        channel_id = interaction.message.embeds[0].footer.text
+        channel = interaction.guild.get_channel(int(channel_id))
+        # Get the current permissions
+        permissions = channel.overwrites_for(channel.guild.default_role)
+        # Toggle the button
+        if not permissions.add_reactions:
+            permissions.update(add_reactions=True)
+        else:
+            permissions.update(add_reactions=False)
+        # Update the permissions in the channel
+        await channel.set_permissions(channel.guild.default_role, overwrite=permissions)
+        # Edit the message
+        await self.reload_buttons(interaction.message)
+        await interaction.response.send_message("Updated", ephemeral=True)
+
+    @discord.ui.button(label="Embeds Allowed", style=discord.ButtonStyle.green, custom_id="embeds", row=3)
     async def embeds(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Get the embed from the message
         channel_id = interaction.message.embeds[0].footer.text
@@ -159,7 +187,7 @@ class LockdownView(discord.ui.View):
         await self.reload_buttons(interaction.message)
         await interaction.response.send_message("Updated", ephemeral=True)
 
-    @discord.ui.button(label="Attachments Allowed", style=discord.ButtonStyle.green, custom_id="attachments")
+    @discord.ui.button(label="Attachments Allowed", style=discord.ButtonStyle.green, custom_id="attachments", row=3)
     async def attachments(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Get the embed from the message
         channel_id = interaction.message.embeds[0].footer.text
@@ -177,8 +205,7 @@ class LockdownView(discord.ui.View):
         await self.reload_buttons(interaction.message)
         await interaction.response.send_message("Updated", ephemeral=True)
 
-    @discord.ui.button(label="Sync permissions and restore channel", style=discord.ButtonStyle.blurple,
-                       custom_id="restore")
+    @discord.ui.button(label="Sync permissions and restore channel", style=discord.ButtonStyle.blurple, custom_id="restore", row=4)
     async def restore(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Get the embed from the message
         embed = interaction.message.embeds[0]
@@ -210,46 +237,22 @@ class LockdownView(discord.ui.View):
         permissions = channel.overwrites_for(channel.guild.default_role)
         # Check if automod is active
         rule1 = await message.guild.fetch_automod_rule(1194682146124738570)
-        if channel in rule1.exempt_channels:
-            self.children[0].style = discord.ButtonStyle.red
-            self.children[0].label = "AutoMod Inactive"
-        else:
-            self.children[0].style = discord.ButtonStyle.green
-            self.children[0].label = "AutoMod Active"
-        # Check if slowmode is active
-        if channel.slowmode_delay == 30:
-            self.children[1].style = discord.ButtonStyle.green
-            self.children[1].label = "Slowmode(30s) Active"
-        else:
-            self.children[1].style = discord.ButtonStyle.red
-            self.children[1].label = "Slowmode(30s) Inactive"
-        # Check the permissions
-        if permissions.external_emojis:
-            self.children[2].style = discord.ButtonStyle.green
-            self.children[2].label = "Emotes Allowed"
-        else:
-            self.children[2].style = discord.ButtonStyle.red
-            self.children[2].label = "Emotes Blocked"
-        if permissions.external_stickers:
-            self.children[3].style = discord.ButtonStyle.green
-            self.children[3].label = "Stickers Allowed"
-        else:
-            self.children[3].style = discord.ButtonStyle.red
-            self.children[3].label = "Stickers Blocked"
-        if permissions.embed_links:
-            self.children[4].style = discord.ButtonStyle.green
-            self.children[4].label = "Embeds Allowed"
-        else:
-            self.children[4].style = discord.ButtonStyle.red
-            self.children[4].label = "Embeds Blocked"
-        if permissions.attach_files:
-            self.children[5].style = discord.ButtonStyle.green
-            self.children[5].label = "Attachments Allowed"
-        else:
-            self.children[5].style = discord.ButtonStyle.red
-            self.children[5].label = "Attachments Blocked"
-        # Edit the message
-        await message.edit(view=self)
+        def set_button_style_and_label(button, condition, active_label, inactive_label):
+            if condition:
+                button.style = discord.ButtonStyle.green
+                button.label = active_label
+            else:
+                button.style = discord.ButtonStyle.red
+                button.label = inactive_label
+
+        set_button_style_and_label(self.children[0], channel not in rule1.exempt_channels, "Strict AutoMod Active", "Strict AutoMod Inactive")
+        set_button_style_and_label(self.children[1], channel.slowmode_delay == 30, "Slowmode(30s) Active", "Slowmode(30s) Inactive")
+        set_button_style_and_label(self.children[2], permissions.external_emojis, "Ext. Emotes Allowed", "Ext. Emotes Blocked")
+        set_button_style_and_label(self.children[3], permissions.external_stickers, "Ext. Stickers Allowed", "Ext. Stickers Blocked")
+        set_button_style_and_label(self.children[4], permissions.add_reactions, "Reactions Allowed", "Reactions Blocked")
+        set_button_style_and_label(self.children[5], permissions.embed_links, "Embeds Allowed", "Embeds Blocked")
+        set_button_style_and_label(self.children[6], permissions.attach_files, "Attachments Allowed", "Attachments Blocked")
+        await message.edit(embed=embed, view=self)
 
 
 async def setup(self: commands.Bot) -> None:

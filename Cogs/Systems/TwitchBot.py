@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+import discord
 import pytz
 from discord import Embed, Color, Guild, ScheduledEvent, EventStatus, EntityType, PrivacyLevel, Message
 from discord.ext import commands, tasks
@@ -126,11 +127,20 @@ class TwitchBot(commands.Cog):
             else:
                 self.current_gamble_embed = await self.discordBot.statics.twitch_gambling_channel.send(
                     '<@&1080237787174948936>', embed=embed)
+                await self.current_gamble_embed.pin()
 
         if prediction["event"]["status"] == "RESOLVED":
             await self.discordBot.statics.twitch_gambling_channel.send(
                 f'The gamble has been resolved {self.current_gamble_embed.jump_url}')
             self.current_gamble_embed = None
+
+        if prediction["event"]["status"] == "CANCELED":
+            await self.current_gamble_embed.delete()
+            self.current_gamble_embed = None
+
+        # Temporary to detect what a cancel status is called
+        if prediction["event"]["status"] != "RESOLVED" and prediction["event"]["status"] != "LOCKED":
+            logging.getLogger("Twitch").info(f"Prediction status: {prediction['event']['status']}")
 
     async def on_channel_update(self, data: ChannelUpdateEvent):
         # Create and embed of the channel update
@@ -186,6 +196,11 @@ class TwitchBot(commands.Cog):
             event: ScheduledEvent = event
             if event.status == EventStatus.active and event.location == 'https://twitch.tv/dougdoug' and event.creator.bot:
                 await event.end()
+        # Clear the current gamble pins
+        pins = await self.discordBot.statics.twitch_gambling_channel.pins()
+        for pin in pins:
+            if pin.author.id == self.discordBot.user.id:
+                await pin.unpin()
 
     async def on_chat_ready(self, data: EventData):
         logging.getLogger("Twitch").info('Chat is ready for work, joining channels')
@@ -222,7 +237,7 @@ class TwitchBot(commands.Cog):
                 logging.getLogger("Twitch").exception(f"Error redeeming code: {e}")
                 await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
-    async def initialize(self):
+    async def cog_load(self):
         self.twitch_client_id = self.discordBot.settings["twitch_client_id"]
         self.twitch_client_secret = self.discordBot.settings["twitch_client_secret"]
         self.twitch_bot_name = self.discordBot.settings["twitch_bot_name"]
@@ -267,6 +282,27 @@ class TwitchBot(commands.Cog):
         await asyncio.sleep(5)
         # Start the monitor
         self.monitor.start()
+        # Set the current gamble message if any
+        pinned_messages = await self.discordBot.statics.twitch_gambling_channel.pins()
+        bot_message = None
+        for message in pinned_messages:
+            if message.author.id == self.discordBot.user.id:
+                bot_message = message
+                break
+        if bot_message:
+            self.current_gamble_embed = bot_message
+            self.current_gamble_last_update = datetime.utcnow()
+
+    async def cog_unload(self):
+        # Stop the monitor
+        self.monitor.cancel()
+        # Stop the chat
+        await self.chat.stop()
+        # Stop the pubsub
+        await self.pubsub.stop()
+        # Stop the eventsub
+        await self.eventsub.stop()
+        
 
     @tasks.loop(minutes=5)
     async def monitor(self):
@@ -288,7 +324,7 @@ class TwitchBot(commands.Cog):
             # Check eventsub is connected
             if not self.eventsub.active_session.status == 'connected':
                 # Reconnect
-                if self.eventsub.__running:
+                if self.eventsub._running:
                     await self.eventsub.stop()
                 await self.eventsub.start()
                 logging.getLogger("Twitch").warning('Twitch EventSub reconnected')
@@ -301,6 +337,4 @@ class TwitchBot(commands.Cog):
 
 
 async def setup(client):
-    twitchBot = TwitchBot(client)
-    await twitchBot.initialize()
-    await client.add_cog(twitchBot)
+    await client.add_cog(TwitchBot(client))

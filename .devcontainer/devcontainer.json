@@ -1,4 +1,16 @@
 {
   "name": "DougPython",
-  "image": "mcr.microsoft.com/vscode/devcontainers/python:3.12"
+  "image": "mcr.microsoft.com/vscode/devcontainers/python:3.12",
+  "postCreateCommand": "pip install -r requirements.txt",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "GitHub.copilot",
+        "VisualStudioExptTeam.vscodeintellicode",
+        "ms-python.vscode-pylance",
+        "donjayamanne.python-environment-manager"
+      ]
+    }
+  }
 }
