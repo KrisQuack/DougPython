@@ -51,7 +51,7 @@ class Client(commands.Bot):
                 self.tree.on_error = self.on_interaction_fail
                 synced = await self.tree.sync()
                 logging.getLogger("Main").info(f'Command tree synced: {len(synced)}')
-                await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
+                await self.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="For DMs"))
             except Exception as e:
                 logging.getLogger("Main").error(f'Failed to initialize: {e}\n{traceback.format_exc()}')
                 os._exit(1)

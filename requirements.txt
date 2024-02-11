@@ -1,7 +1,6 @@
-aiohttp==3.9.1
 discord.py==2.3.2
-openai==1.10.0
-pytz==2023.4
-twitchAPI==4.1.0
+openai==1.11.1
+pytz==2024.1
+twitchAPI==4.2.0
 motor==3.3.2
 python-youtube==0.9.3

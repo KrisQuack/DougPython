@@ -29,8 +29,8 @@ class DMRelay(commands.Cog):
                 attachment_embeds.append(attach_embed)
 
             # Send the main embed and any attachment embeds to the specified channel
-            dmChannel = self.client.statics.dm_receipt_channel
-            await dmChannel.send(embed=embed)
+            dmChannel: discord.TextChannel = self.client.statics.dm_receipt_channel
+            await dmChannel.send(embed=embed, view=DMHistoryView())
             for attach_embed in attachment_embeds:
                 await dmChannel.send(embed=attach_embed)
             await message.channel.send(
@@ -50,9 +50,44 @@ class DMRelay(commands.Cog):
             embed.add_field(name="After", value=after.content, inline=False)
 
             # Send the main embed to the specified channel
-            dmChannel = self.client.statics.dm_receipt_channel
-            await dmChannel.send(embed=embed)
+            dmChannel: discord.TextChannel = self.client.statics.dm_receipt_channel
+            await dmChannel.send(embed=embed, view=DMHistoryView())
+
+class DMHistoryView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="View DM History (last 20)", style=discord.ButtonStyle.blurple, custom_id="dmhistory")
+    async def history(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        # Get the embed from the message
+        embed = interaction.message.embeds[0]
+        member_id = int(embed.author.name.split("(")[1].split(")")[0])
+        member = await interaction.client.fetch_user(member_id)
+        # Get the DM channel
+        dm_channel = await member.create_dm()
+        # Get the messages
+        messages = [msg async for msg in dm_channel.history(limit=20)]
+        messages.reverse()
+        # Create the string for the messages
+        messageStr = ""
+        for msg in messages:
+            author_name = msg.author.name
+            content = msg.clean_content
+            if msg.embeds:
+                for embed in msg.embeds:
+                    if embed.description:
+                        content += f" {embed.description}"
+            messageStr += f"- {author_name}: {content}\n"
+        # Get the last 4000 characters
+        messageStr = messageStr[-4000:]
+        # Create an embed with the messages
+        historyEmbed = Embed(title="DM History", description=messageStr, color=Color.orange())
+        # Send the embed
+        await interaction.followup.send(embed=historyEmbed, ephemeral=True)
+        
 
 
 async def setup(self: commands.Bot) -> None:
     await self.add_cog(DMRelay(self))
+    self.add_view(DMHistoryView())

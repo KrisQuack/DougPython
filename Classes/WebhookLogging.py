@@ -1,6 +1,8 @@
 import asyncio
 import logging
 from logging import StreamHandler
+from datetime import datetime
+import os
 
 from discord import Embed, Color
 
@@ -12,6 +14,7 @@ class WebhookLogging(logging.Handler):
         self.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
         self.stream_handler = StreamHandler()
         self.stream_handler.setFormatter(self.formatter)
+        self.error_timestamps = []
 
         # Initialize the log buffer
         self.embed_buffer = []
@@ -32,6 +35,16 @@ class WebhookLogging(logging.Handler):
             embed = Embed(title=f"[{record.levelname}] Log Entry: {record.name}", description=formatted_message,
                           color=color)
             self.embed_buffer.append(embed)
+
+            if record.levelno == logging.WARNING or record.levelno == logging.ERROR:
+                if 'rate limited' in formatted_message:
+                    return
+                self.error_timestamps.append(datetime.utcnow())
+                # Remove any timestamps older than 5 minutes
+                self.error_timestamps = [timestamp for timestamp in self.error_timestamps if (datetime.utcnow() - timestamp).seconds < 300]
+                # If there are more than 5 errors in the last 5 minutes, send a message to the error channel
+                if len(self.error_timestamps) > 5:
+                    os._exit(1)
         except Exception as e:
             print(f'Error sending log message: {e}')
 

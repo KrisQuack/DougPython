@@ -12,7 +12,7 @@ from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.helper import first
 from twitchAPI.oauth import refresh_access_token
 from twitchAPI.object.api import Stream
-from twitchAPI.object.eventsub import ChannelUpdateEvent, StreamOnlineEvent, StreamOfflineEvent
+from twitchAPI.object.eventsub import ChannelUpdateEvent, StreamOnlineEvent, StreamOfflineEvent, ChannelChatMessageEvent
 from twitchAPI.pubsub import PubSub
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, ChatEvent
@@ -132,15 +132,12 @@ class TwitchBot(commands.Cog):
         if prediction["event"]["status"] == "RESOLVED":
             await self.discordBot.statics.twitch_gambling_channel.send(
                 f'The gamble has been resolved {self.current_gamble_embed.jump_url}')
+            await self.current_gamble_embed.unpin()
             self.current_gamble_embed = None
 
         if prediction["event"]["status"] == "CANCELED":
             await self.current_gamble_embed.delete()
             self.current_gamble_embed = None
-
-        # Temporary to detect what a cancel status is called
-        if prediction["event"]["status"] != "RESOLVED" and prediction["event"]["status"] != "LOCKED":
-            logging.getLogger("Twitch").info(f"Prediction status: {prediction['event']['status']}")
 
     async def on_channel_update(self, data: ChannelUpdateEvent):
         # Create and embed of the channel update
@@ -202,32 +199,26 @@ class TwitchBot(commands.Cog):
             if pin.author.id == self.discordBot.user.id:
                 await pin.unpin()
 
-    async def on_chat_ready(self, data: EventData):
-        logging.getLogger("Twitch").info('Chat is ready for work, joining channels')
-        await data.chat.join_room(self.twitch_channel_name)
-
-    async def on_chat_joined(self, data: EventData):
-        logging.getLogger("Twitch").info(f"User {data.user_name} joined the chat {data.room_name}")
-
-    async def on_chat_message(self, msg: ChatMessage):
-        if msg.text == "wah, you up?" and msg.user.mod:
-            await msg.reply("Let me sleep")
-        if msg.text.startswith('DMC-'):
+    async def on_chat_message(self, data: ChannelChatMessageEvent):
+        msg = data.event.message
+        if msg.text.startswith('DMC-') and data.event.channel_points_custom_reward_id == 'a5b9d1c7-44f9-4964-b0f7-42c39cb04f98':
             try:
                 dbUser = await get_member_by_mc_redeem(msg.text, self.discordBot.database)
                 dbUserID = dbUser['_id']
                 if dbUser:
-                    # Post embed for redemption
-                    embed = Embed(title=f"Minecraft Redemption: {msg.user.display_name}", color=Color.orange())
-                    embed.set_footer(
-                        text="Please ensure the user has redeemed on twitch and approve in the redemption queue once complete")
-                    embed.add_field(name="Twitch Username", value=msg.user.display_name, inline=True)
-                    embed.add_field(name="Discord ID", value=dbUserID, inline=True)
-                    embed.add_field(name="Discord Mention", value=f"<@{dbUserID}>", inline=True)
-                    # Send the embed to the mod channel
-                    await self.discordBot.statics.twitch_mod_channel.send(embed=embed)
                     # respond to the user
-                    await msg.reply(f"Successfully redeemed, please wait for a mod to check your info")
+                    guild: discord.Guild = self.discordBot.statics.guild
+                    discordUser: discord.Member = guild.get_member(int(dbUserID))
+                    if discordUser:
+                        try:
+                            mcRole = guild.get_role(698681714616303646)
+                            pesosRole = guild.get_role(954017881652342786)
+                            await discordUser.add_roles(mcRole, pesosRole)
+                            await self.discordBot.statics.guild.get_channel(698679698699583529).send(f'{discordUser.mention} Redemption succesful, Please link your minecraft account using the instructions in <#743938486888824923>')
+                            await self.discordBot.statics.twitch_mod_channel.send(f'Minecraft redemption succesful, Please approve in the redemption queue\nTwitch:{data.event.chatter_user_name}\nDiscord:{discordUser.mention}')
+                        except Exception as e:
+                            await self.discordBot.statics.twitch_mod_channel.send(f'{discordUser.mention} Redemption failed, Please verify their redemption')
+                            logging.getLogger("Twitch").exception(f"Error redeeming code: {e}")
                     # Remove the code from the database
                     dbUser['mc_redeem'] = None
                     await update_member(dbUser, self.discordBot.database)
@@ -235,7 +226,6 @@ class TwitchBot(commands.Cog):
                     raise Exception("Invalid code")
             except Exception as e:
                 logging.getLogger("Twitch").exception(f"Error redeeming code: {e}")
-                await msg.reply(f"Invalid code, please contact the mods in #staff-support on discord")
 
     async def cog_load(self):
         self.twitch_client_id = self.discordBot.settings["twitch_client_id"]
@@ -243,6 +233,16 @@ class TwitchBot(commands.Cog):
         self.twitch_bot_name = self.discordBot.settings["twitch_bot_name"]
         self.twitch_bot_refresh_token = self.discordBot.settings["twitch_bot_refresh_token"]
         self.twitch_channel_name = self.discordBot.settings["twitch_channel_name"]
+        # Set the current gamble message if any
+        pinned_messages = await self.discordBot.statics.twitch_gambling_channel.pins()
+        bot_message = None
+        for message in pinned_messages:
+            if message.author.id == self.discordBot.user.id:
+                bot_message = message
+                break
+        if bot_message:
+            self.current_gamble_embed = bot_message
+            self.current_gamble_last_update = datetime.utcnow()
         # Set up the Twitch instance for the bot
         self.twitch_bot = await Twitch(self.twitch_client_id,
                                        self.twitch_client_secret)
@@ -268,36 +268,16 @@ class TwitchBot(commands.Cog):
         await self.eventsub.listen_channel_update_v2(self.channel_user.id, self.on_channel_update)
         await self.eventsub.listen_stream_online(self.channel_user.id, self.on_stream_online)
         await self.eventsub.listen_stream_offline(self.channel_user.id, self.on_stream_offline)
+        await self.eventsub.listen_channel_chat_message(self.channel_user.id, self.bot_user.id, self.on_chat_message)
         logging.getLogger("Twitch").info('Twitch EventSub listening')
-        # Set up the chat
-        self.chat = await Chat(self.twitch_bot, callback_loop=self.discordBot.loop)
-        self.chat.set_prefix("✵")
-        self.chat.register_event(ChatEvent.READY, self.on_chat_ready)
-        self.chat.register_event(ChatEvent.JOINED, self.on_chat_joined)
-        self.chat.register_event(ChatEvent.MESSAGE, self.on_chat_message)
-        self.chat.register_event(ChatEvent.LEFT, self.on_chat_ready)
-        self.chat.start()
-        logging.getLogger("Twitch").info('Twitch Chat listening')
         # Pause for the services to start
         await asyncio.sleep(5)
         # Start the monitor
         self.monitor.start()
-        # Set the current gamble message if any
-        pinned_messages = await self.discordBot.statics.twitch_gambling_channel.pins()
-        bot_message = None
-        for message in pinned_messages:
-            if message.author.id == self.discordBot.user.id:
-                bot_message = message
-                break
-        if bot_message:
-            self.current_gamble_embed = bot_message
-            self.current_gamble_last_update = datetime.utcnow()
 
     async def cog_unload(self):
         # Stop the monitor
         self.monitor.cancel()
-        # Stop the chat
-        await self.chat.stop()
         # Stop the pubsub
         await self.pubsub.stop()
         # Stop the eventsub
@@ -307,13 +287,6 @@ class TwitchBot(commands.Cog):
     @tasks.loop(minutes=5)
     async def monitor(self):
         try:
-            # Check chat is connected
-            if not self.chat.is_in_room(self.twitch_channel_name):
-                # Reconnect
-                if self.chat.__running:
-                    await self.chat.stop()
-                await self.chat.start()
-                logging.getLogger("Twitch").warning('Twitch Chat reconnected')
             # Check pubsub is connected
             if not self.pubsub.is_connected():
                 # Reconnect
